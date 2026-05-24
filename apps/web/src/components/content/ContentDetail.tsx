@@ -21,7 +21,7 @@ import {
   Loader2,
   AlertCircle,
 } from "lucide-react";
-import { formatDate, getDomain } from "@/lib/utils";
+import { formatDate, getDomain, decodeHtmlEntities } from "@/lib/utils";
 import type { SavedContent, ProcessingStatus } from "@content-archive/shared";
 import { cn } from "@/lib/utils";
 
@@ -71,7 +71,7 @@ export function ContentDetail({ content, onDelete }: ContentDetailProps) {
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-2">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold">{content.title ?? "Untitled"}</h1>
+            <h1 className="text-2xl font-bold">{decodeHtmlEntities(content.title) || "Untitled"}</h1>
             {content.processingStatus !== "completed" && (() => {
               const cfg = statusConfig[content.processingStatus];
               return (
@@ -111,7 +111,7 @@ export function ContentDetail({ content, onDelete }: ContentDetailProps) {
             AI-Generated Summary
           </div>
           <p className="text-sm leading-relaxed text-foreground/90">
-            {content.summary}
+            {decodeHtmlEntities(content.summary)}
           </p>
         </div>
       )}
@@ -188,7 +188,7 @@ export function ContentDetail({ content, onDelete }: ContentDetailProps) {
           <Separator />
           <div className="space-y-1">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Your Note</p>
-            <p className="text-sm text-foreground/80">{content.note}</p>
+            <p className="text-sm text-foreground/80">{decodeHtmlEntities(content.note)}</p>
           </div>
         </>
       )}

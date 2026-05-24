@@ -16,7 +16,7 @@ import {
   Loader2,
   AlertCircle,
 } from "lucide-react";
-import { cn, formatRelativeTime, truncate, getDomain } from "@/lib/utils";
+import { cn, formatRelativeTime, truncate, getDomain, decodeHtmlEntities } from "@/lib/utils";
 import type { SavedContent, ProcessingStatus } from "@content-archive/shared";
 
 const typeIcons: Record<string, React.ReactNode> = {
@@ -76,20 +76,20 @@ export function ContentCard({ content, score }: ContentCardProps) {
             <div className="flex-1 p-4 space-y-2 min-w-0">
               <div className="flex items-start justify-between gap-2">
                 <h3 className="font-semibold leading-tight line-clamp-2 group-hover:text-primary transition-colors">
-                  {content.title ?? "Untitled"}
+                  {decodeHtmlEntities(content.title) || "Untitled"}
                 </h3>
                 <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-1" />
               </div>
 
               {content.description && (
                 <p className="text-sm text-muted-foreground line-clamp-2">
-                  {content.description}
+                  {decodeHtmlEntities(content.description)}
                 </p>
               )}
 
               {content.summary && (
                 <p className="text-xs text-muted-foreground/80 line-clamp-1 italic">
-                  {truncate(content.summary, 120)}
+                  {truncate(decodeHtmlEntities(content.summary), 120)}
                 </p>
               )}
 

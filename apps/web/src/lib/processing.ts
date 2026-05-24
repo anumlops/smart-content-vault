@@ -1,3 +1,5 @@
+import { decodeHtmlEntities } from "./utils";
+
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
   AI: ["artificial intelligence", "machine learning", "deep learning", "neural network", "llm", "gpt", "chatgpt", "ai agent", "transformer", "diffusion", "rag", "fine-tuning", "prompt", "token", "embedding"],
   "Deep Learning": ["transformer", "cnn", "rnn", "lstm", "attention", "backpropagation", "gradient descent", "activation function", "convolutional", "recurrent", "generative"],
@@ -75,8 +77,8 @@ export async function extractMetadata(url: string): Promise<ExtractedMetadata> {
     const twitterDesc = extractMeta(html, "twitter:description");
     const twitterImage = extractMeta(html, "twitter:image");
 
-    result.title = ogTitle || twitterTitle || extractTitle(html) || "";
-    result.description = ogDesc || twitterDesc || extractMeta(html, "description") || "";
+    result.title = decodeHtmlEntities(ogTitle || twitterTitle || extractTitle(html) || "");
+    result.description = decodeHtmlEntities(ogDesc || twitterDesc || extractMeta(html, "description") || "");
     result.thumbnailUrl = result.thumbnailUrl || ogImage || twitterImage || null;
 
     if (!result.contentType || result.contentType === "website") {
@@ -86,7 +88,7 @@ export async function extractMetadata(url: string): Promise<ExtractedMetadata> {
     }
 
     const textContent = extractTextContent(html);
-    result.text = textContent.slice(0, 5000);
+    result.text = decodeHtmlEntities(textContent.slice(0, 5000));
   } catch {
     // network errors are non-fatal for metadata extraction
   }

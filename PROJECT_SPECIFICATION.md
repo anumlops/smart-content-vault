@@ -994,4 +994,42 @@ docker-compose up -d
 
 ---
 
+## Appendix A: Runtime Configuration
+
+### A.1 Authentication Secret
+```
+AUTH_SECRET = fa69b9d6bb05e25bb0966eefae4048b221bcc80be2a744e61f836309824d77a6
+```
+
+### A.2 Environment Variables (.env)
+| Variable | Value | Notes |
+|----------|-------|-------|
+| `DATABASE_URL` | `file:./dev.db` | SQLite for local dev |
+| `AUTH_SECRET` | `fa69b9d6bb05e25bb0966eefae4048b221bcc80be2a744e61f836309824d77a6` | NextAuth JWT encryption |
+| `NEXTAUTH_URL` | `http://localhost:3000` | App base URL |
+| `GITHUB_CLIENT_ID` | *(empty)* | Set for GitHub OAuth |
+| `GITHUB_CLIENT_SECRET` | *(empty)* | Set for GitHub OAuth |
+| `GOOGLE_CLIENT_ID` | *(empty)* | Set for Google OAuth |
+| `GOOGLE_CLIENT_SECRET` | *(empty)* | Set for Google OAuth |
+| `AI_SERVICE_URL` | `http://localhost:8000` | Optional FastAPI AI service |
+
+### A.3 Auth Implementation Details
+- **Strategy**: JWT (required by Credentials provider with PrismaAdapter)
+- **Session config**: `session: { strategy: "jwt" }` in NextAuth config
+- **Session callback**: Returns `session.user.id` from `token.sub`
+- **JWT callback**: Persists `user.id` into `token.sub` on sign-in
+- **Providers**:
+  - GitHub OAuth (conditional — only enabled when env vars are set)
+  - Google OAuth (conditional — only enabled when env vars are set)
+  - Demo Credentials (always enabled — finds or creates user by email `demo@contentarchive.dev`)
+
+### A.4 Deviations from Spec
+| # | Deviation | Reason |
+|---|-----------|--------|
+| 1 | **SQLite instead of PostgreSQL** | Zero setup for local dev; schema is identical, swap to PostgreSQL in prod |
+| 2 | **Inline JS processing as primary fallback** | Python AI service requires separate setup; inline JS works out of the box |
+| 3 | `**.env excluded from git** | Security best practice; refer to this appendix for values |
+
+---
+
 *End of Project Specification — Smart Content Vault v1.0.0*

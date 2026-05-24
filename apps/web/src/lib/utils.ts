@@ -5,9 +5,21 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatRelativeTime(date: Date | string): string {
+function toDate(date: unknown): Date | null {
+  if (date === undefined || date === null) return null;
+  if (date instanceof Date) return isNaN(date.getTime()) ? null : date;
+  if (typeof date === "string") {
+    const d = new Date(date);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  return null;
+}
+
+export function formatRelativeTime(date: unknown): string {
+  const target = toDate(date);
+  if (!target) return "Unknown date";
+
   const now = new Date();
-  const target = typeof date === "string" ? new Date(date) : date;
   const diffMs = now.getTime() - target.getTime();
   const diffSecs = Math.floor(diffMs / 1000);
   const diffMins = Math.floor(diffSecs / 60);
@@ -25,8 +37,10 @@ export function formatRelativeTime(date: Date | string): string {
   return target.toLocaleDateString();
 }
 
-export function formatDate(date: Date | string): string {
-  const target = typeof date === "string" ? new Date(date) : date;
+export function formatDate(date: unknown): string {
+  const target = toDate(date);
+  if (!target) return "Unknown date";
+
   return target.toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
@@ -63,6 +77,24 @@ export function getContentTypeColor(type: string): string {
 export function truncate(str: string, length: number): string {
   if (str.length <= length) return str;
   return str.slice(0, length).trimEnd() + "...";
+}
+
+export function decodeHtmlEntities(str: string | null | undefined): string {
+  if (!str) return "";
+  return str
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'")
+    .replace(/&#39;/g, "'")
+    .replace(/&#x2019;/g, "'")
+    .replace(/&#x201C;/g, '"')
+    .replace(/&#x201D;/g, '"')
+    .replace(/&#x2013;/g, "–")
+    .replace(/&#x2014;/g, "—")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&#(\d+);/g, (_m, code) => String.fromCharCode(Number(code)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_m, code) => String.fromCharCode(parseInt(code, 16)));
 }
 
 export function getDomain(url: string): string {
