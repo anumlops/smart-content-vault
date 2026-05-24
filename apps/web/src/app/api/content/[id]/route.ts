@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 function parseContent(item: any) {
-  return { ...item, tags: JSON.parse(item.tags ?? "[]") };
+  return { ...item, tags: JSON.parse(item.tags ?? "[]"), takeaways: JSON.parse(item.takeaways ?? "[]") };
 }
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {

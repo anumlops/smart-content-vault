@@ -24,6 +24,7 @@ export interface SavedContent {
   contentType: ContentType;
   note: string | null;
   summary: string | null;
+  takeaways: string[];
   emotionalTone: string | null;
   educationalRelevance: number | null;
   category: string | null;
@@ -82,6 +83,7 @@ export interface AIPipelineResult {
   thumbnailUrl: string | null;
   contentType: ContentType;
   summary: string;
+  takeaways: string[];
   category: string;
   tags: string[];
   emotionalTone: string;

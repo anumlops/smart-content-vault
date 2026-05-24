@@ -59,6 +59,15 @@ Make the Smart Content Vault app runnable end-to-end with proper auth, content i
   - **Remove social-media boilerplate** — 28 regex patterns (subscribe, share, copyright, etc.)
   - **Normalize whitespace** — collapse spaces, trim lines, dedup empty lines
   - **Extract meaningful content** — prioritized extraction from JSON-LD, `<article>`, `<main>`, content divs, then `<p>`/headings as fallback
+- [x] **Integrated NVIDIA llama-4-maverick as AI provider**:
+  - Created `apps/web/src/lib/providers/` with `provider.ts` (base interface), `nvidia.ts` (NVIDIA API integration), `keyword.ts` (keyword fallback), `index.ts` (exports)
+  - `NvidiaProvider`: sends cleaned content to NVIDIA chat completions API, requests structured JSON (summary, category, tags, takeaways, tone), parses code-fenced or bare JSON responses
+  - `KeywordProvider`: refactored from old `classifyContent` + `generateSummary` — keyword scoring for category/tags, regex tone detection, extractive summarization
+  - `runWithFallback()`: tries NvidiaProvider first; on any failure (missing key, network error, invalid JSON, timeout) automatically falls back to KeywordProvider
+  - Added `takeaways` field to Prisma schema (stored as JSON string) and shared `SavedContent` type
+  - Updated `ContentDetail.tsx` — displays Key Takeaways section with amber bullet list between summary and tags
+  - Content saving never fails due to AI processing (async, non-blocking, best-effort results)
+  - Updated `.env`, `.env.example`, `PROJECT_SPECIFICATION.md` with NVIDIA vars (placeholder values only)
 
 ### Blocked
 - (none)

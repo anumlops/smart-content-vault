@@ -1011,9 +1011,16 @@ AUTH_SECRET = fa69b9d6bb05e25bb0966eefae4048b221bcc80be2a744e61f836309824d77a6
 | `GITHUB_CLIENT_SECRET` | *(empty)* | Set for GitHub OAuth |
 | `GOOGLE_CLIENT_ID` | *(empty)* | Set for Google OAuth |
 | `GOOGLE_CLIENT_SECRET` | *(empty)* | Set for Google OAuth |
-| `AI_SERVICE_URL` | `http://localhost:8000` | Optional FastAPI AI service |
+| `NVIDIA_API_KEY` | *(empty)* | NVIDIA AI inference API key |
+| `NVIDIA_MODEL` | `llama-4-maverick-17b-128e-instruct` | NVIDIA model name |
 
-### A.3 Auth Implementation Details
+### A.3 AI Provider Architecture
+- **Primary**: `NvidiaProvider` — sends extracted content to NVIDIA llama-4-maverick for structured JSON (summary, category, tags, takeaways, tone)
+- **Fallback**: `KeywordProvider` — keyword-based classification and extractive summarization (zero API calls, always works)
+- **Fallback chain**: `processContentInline()` tries NvidiaProvider first; on any failure (missing key, network error, invalid response, timeout), automatically falls back to KeywordProvider
+- **Content saving never fails**: AI processing runs async and non-blocking; failures are logged, results are best-effort
+
+### A.4 Auth Implementation Details
 - **Strategy**: JWT (required by Credentials provider with PrismaAdapter)
 - **Session config**: `session: { strategy: "jwt" }` in NextAuth config
 - **Session callback**: Returns `session.user.id` from `token.sub`
@@ -1024,6 +1031,18 @@ AUTH_SECRET = fa69b9d6bb05e25bb0966eefae4048b221bcc80be2a744e61f836309824d77a6
   - Demo Credentials (always enabled — finds or creates user by email `demo@contentarchive.dev`)
 
 ### A.4 Deviations from Spec
+| # | Deviation | Reason |
+|---|-----------|--------|
+| 1 | **SQLite instead of PostgreSQL** | Zero setup for local dev; schema is identical, swap to PostgreSQL in prod |
+| 2 | **Inline JS processing as primary fallback** | Python AI service requires separate setup; inline JS works out of the box |
+| 3 | `**.env excluded from git** | Security best practice; refer to this appendix for values |
+
+### A.5 New Fields
+| Field | Type | Stored as | Description |
+|-------|------|-----------|-------------|
+| `takeaways` | `string[]` | JSON string in `SavedContent.takeaways` | Key takeaway bullet points from content analysis |
+
+### A.6 Deviations from Spec
 | # | Deviation | Reason |
 |---|-----------|--------|
 | 1 | **SQLite instead of PostgreSQL** | Zero setup for local dev; schema is identical, swap to PostgreSQL in prod |

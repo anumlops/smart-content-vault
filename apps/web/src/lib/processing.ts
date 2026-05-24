@@ -1,29 +1,9 @@
 import { decodeHtmlEntities } from "./utils";
+import { NvidiaProvider, KeywordProvider } from "./providers";
+import type { AIProvider, AIProviderResult } from "./providers";
 
-const CATEGORY_KEYWORDS: Record<string, string[]> = {
-  AI: ["artificial intelligence", "machine learning", "deep learning", "neural network", "llm", "gpt", "chatgpt", "ai agent", "transformer", "diffusion", "rag", "fine-tuning", "prompt", "token", "embedding"],
-  "Deep Learning": ["transformer", "cnn", "rnn", "lstm", "attention", "backpropagation", "gradient descent", "activation function", "convolutional", "recurrent", "generative"],
-  "Computer Vision": ["computer vision", "image recognition", "object detection", "yolo", "segmentation", "stable diffusion", "dalle", "visual", "image generation", "face recognition"],
-  Cybersecurity: ["cybersecurity", "hacking", "penetration", "vulnerability", "exploit", "encryption", "malware", "ransomware", "firewall", "zero-day", "privacy"],
-  Cryptocurrency: ["bitcoin", "ethereum", "crypto", "blockchain", "defi", "nft", "web3", "token", "smart contract", "solana", "mining"],
-  Business: ["business", "revenue", "market", "strategy", "growth", "enterprise", "b2b", "b2c", "ceo", "funding", "investment", "venture capital", "profit"],
-  Startups: ["startup", "founder", "venture capital", "seed funding", "series a", "pitch", "accelerator", "yc", "y combinator", "mvp", "product-market fit"],
-  Emotional: ["emotional", "heartbreaking", "touching", "tear", "cry", "love", "family", "father", "mother", "relationship", "feel", "emotion"],
-  Family: ["family", "parent", "child", "father", "mother", "brother", "sister", "marriage", "baby", "home", "together"],
-  Motivation: ["motivation", "inspire", "never give up", "success", "grind", "hustle", "dream", "believe", "achievement", "discipline", "determination"],
-  Automobile: ["car", "automobile", "vehicle", "engine", "tesla", "electric vehicle", "ev", "racing", "bike", "motorcycle"],
-  Technology: ["technology", "tech", "software", "hardware", "digital", "innovation", "future", "robot", "automation", "quantum", "cloud", "saas", "platform", "app"],
-  Productivity: ["productivity", "efficiency", "time management", "habit", "routine", "focus", "organization", "workflow", "system", "gtd"],
-  Philosophy: ["philosophy", "stoic", "existential", "consciousness", "meaning", "purpose", "ethics", "moral", "wisdom", "meditation", "mindfulness"],
-  Finance: ["finance", "investing", "stock", "market", "trading", "portfolio", "asset", "wealth", "retirement", "saving", "dividend", "financial freedom"],
-  Education: ["education", "learn", "course", "tutorial", "lesson", "study", "skill", "knowledge", "training", "workshop", "lecture", "university", "school"],
-  Health: ["health", "fitness", "workout", "exercise", "nutrition", "diet", "mental health", "wellness", "yoga", "meditation", "sleep", "medical"],
-  Science: ["science", "physics", "biology", "chemistry", "astronomy", "space", "nasa", "research", "experiment", "discovery", "evolution", "dna", "genetic"],
-  Entertainment: ["entertainment", "movie", "music", "game", "gaming", "funny", "comedy", "show", "stream", "netflix", "hollywood", "celebrity"],
-  News: ["news", "breaking", "report", "update", "current events", "politics", "world", "global", "economy"],
-};
-
-const EDUCATIONAL_KEYWORDS = ["tutorial", "learn", "course", "explain", "guide", "lesson", "lecture", "education", "how to", "understanding"];
+const nvidiaProvider = new NvidiaProvider();
+const keywordProvider = new KeywordProvider();
 
 interface ExtractedMetadata {
   title: string;
@@ -162,33 +142,26 @@ function extractTextContent(html: string): string {
     blocks.push({ text: cleaned, priority });
   }
 
-  // 1. JSON-LD article body
   extractJsonLdTexts(html).forEach((t) => addBlock(t, 0));
 
-  // 2. <article>
   const articleMatch = html.match(/<article[^>]*>([\s\S]*?)<\/article>/i);
   if (articleMatch) {
     extractParagraphs(articleMatch[1]).forEach((t) => addBlock(t, 1));
     extractHeadings(articleMatch[1]).forEach((t) => addBlock(t, 1));
   }
 
-  // 3. <main> or [role="main"]
   const mainMatch = html.match(/<(?:main|div)[^>]*?(?:role=["']main["']|id=["']main["'])[^>]*>([\s\S]*?)<\/(?:main|div)>/i)
     || html.match(/<main[^>]*>([\s\S]*?)<\/main>/i);
   if (mainMatch) {
     extractParagraphs(mainMatch[1]).forEach((t) => addBlock(t, 2));
   }
 
-  // 4. .post-content, .entry-content, .article-body, .story-body
   const contentDiv = html.match(/<div[^>]*?(?:class|id)=["'][^"']*?(?:post-content|entry-content|article-body|story-body|content-body|article__content|post__body)[^"']*["'][^>]*>([\s\S]*?)<\/div>/i);
   if (contentDiv) {
     extractParagraphs(contentDiv[1]).forEach((t) => addBlock(t, 3));
   }
 
-  // 5. Generic paragraphs (fallback)
   extractParagraphs(html).forEach((t) => addBlock(t, 4));
-
-  // 6. Headings (fallback)
   extractHeadings(html).forEach((t) => addBlock(t, 5));
 
   blocks.sort((a, b) => a.priority - b.priority);
@@ -242,10 +215,8 @@ function extractHeadings(html: string): string[] {
 function cleanText(raw: string): string {
   let text = raw;
 
-  // 1. Decode HTML entities first (before any truncation)
   text = decodeHtmlEntities(text);
 
-  // 2. Normalize whitespace — collapse multiple spaces, trim lines
   text = text
     .replace(/\r\n/g, "\n")
     .replace(/\r/g, "\n")
@@ -254,7 +225,6 @@ function cleanText(raw: string): string {
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 
-  // 3. Remove social-media boilerplate (line by line)
   const lines = text.split("\n");
   const cleaned: string[] = [];
   for (const line of lines) {
@@ -271,7 +241,6 @@ function cleanText(raw: string): string {
     if (!isBoilerplate) cleaned.push(trimmed);
   }
 
-  // 4. Remove duplicate lines (fuzzy match)
   const deduped = removeDuplicates(cleaned);
 
   return deduped.join("\n");
@@ -346,95 +315,73 @@ function getYoutubeId(url: string): string | null {
   return null;
 }
 
-interface ClassificationResult {
-  category: string;
-  tags: string[];
-  emotionalTone: string;
-  educationalRelevance: number;
-  summary: string;
-}
-
-export function classifyContent(title: string, description: string, text: string = ""): ClassificationResult {
-  const combined = `${title} ${description} ${text}`.toLowerCase();
-
-  const scores: Record<string, number> = {};
-  for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-    let score = 0;
-    for (const kw of keywords) {
-      const regex = new RegExp(`\\b${escapeRegex(kw)}\\b`, "i");
-      if (regex.test(combined)) score++;
-    }
-    if (score > 0) scores[category] = score;
-  }
-
-  const category = Object.keys(scores).length > 0
-    ? Object.entries(scores).sort((a, b) => b[1] - a[1])[0][0]
-    : "Technology";
-
-  const matchedKeywords = new Set<string>();
-  for (const kwList of Object.values(CATEGORY_KEYWORDS)) {
-    for (const kw of kwList) {
-      const regex = new RegExp(`\\b${escapeRegex(kw)}\\b`, "i");
-      if (regex.test(combined)) matchedKeywords.add(kw);
-    }
-  }
-  const tags = Array.from(matchedKeywords).slice(0, 5);
-
-  let tone = "neutral";
-  if (/inspir|motivat|never give up|believe/.test(combined)) tone = "inspirational";
-  if (/funny|humor|comedy|hilarious/.test(combined)) tone = "humorous";
-  if (/sad|heartbreaking|cry|tear/.test(combined)) tone = "sad";
-  if (/exciting|amazing|incredible|breakthrough/.test(combined)) tone = "exciting";
-  if (/thought|philosophy|reflect|deep/.test(combined)) tone = "thoughtful";
-  if (/learn|tutorial|course|explain/.test(combined)) tone = "educational";
-  if (/motivat|inspire|dream|success|grind/.test(combined)) tone = "motivational";
-
-  let eduScore = 5;
-  const eduCount = EDUCATIONAL_KEYWORDS.filter((kw) => combined.includes(kw)).length;
-  if (eduCount >= 2) eduScore = Math.min(10, 5 + eduCount);
-
-  const summary = generateSummary(title, description, text);
-
-  return { category, tags, emotionalTone: tone, educationalRelevance: eduScore, summary };
-}
-
-function generateSummary(title: string, description: string, text: string): string {
-  if (description && description.length > 20) return description;
-  if (text) {
-    const lines = text.split("\n").filter((l) => l.trim().length > 40);
-    if (lines.length > 0) {
-      const s = lines.slice(0, 2).join(" ");
-      return s.length > 300 ? s.slice(0, 300) + "..." : s;
-    }
-  }
-  return title || "No summary available";
-}
-
 export interface ProcessResult {
   title: string;
   description: string;
   thumbnailUrl: string | null;
   contentType: string;
   summary: string;
+  takeaways: string[];
   category: string;
   tags: string[];
   emotionalTone: string;
   educationalRelevance: number;
 }
 
+function runProviders(title: string, description: string, text: string): Promise<AIProviderResult> {
+  const providers: AIProvider[] = [nvidiaProvider, keywordProvider];
+  return runWithFallback(providers, title, description, text);
+}
+
+async function runWithFallback(
+  providers: AIProvider[],
+  title: string,
+  description: string,
+  text: string,
+  index = 0
+): Promise<AIProviderResult> {
+  if (index >= providers.length) {
+    throw new Error("All AI providers failed");
+  }
+
+  const provider = providers[index];
+  console.log(`Trying provider: ${provider.name}`);
+
+  try {
+    const result = await provider.process(title, description, text);
+    console.log(`Provider ${provider.name} succeeded`);
+    return result;
+  } catch (err) {
+    console.warn(`Provider ${provider.name} failed:`, err);
+    return runWithFallback(providers, title, description, text, index + 1);
+  }
+}
+
 export async function processContentInline(url: string): Promise<ProcessResult> {
   const metadata = await extractMetadata(url);
-  const classification = classifyContent(metadata.title, metadata.description, metadata.text);
+  const aiResult = await runProviders(metadata.title, metadata.description, metadata.text);
+  const eduScore = computeEduScore(metadata.title, metadata.description, metadata.text);
 
   return {
     title: metadata.title || "Untitled",
     description: metadata.description || "",
     thumbnailUrl: metadata.thumbnailUrl,
     contentType: metadata.contentType,
-    summary: classification.summary,
-    category: classification.category,
-    tags: classification.tags,
-    emotionalTone: classification.emotionalTone,
-    educationalRelevance: classification.educationalRelevance,
+    summary: aiResult.summary,
+    takeaways: aiResult.takeaways,
+    category: aiResult.category,
+    tags: aiResult.tags,
+    emotionalTone: aiResult.tone,
+    educationalRelevance: eduScore,
   };
+}
+
+const EDUCATIONAL_KEYWORDS = ["tutorial", "learn", "course", "explain", "guide", "lesson", "lecture", "education", "how to", "understanding"];
+
+function computeEduScore(title: string, description: string, text: string): number {
+  const combined = `${title} ${description} ${text}`.toLowerCase();
+  let score = 5;
+  const eduCount = EDUCATIONAL_KEYWORDS.filter((kw) => combined.includes(kw)).length;
+  if (eduCount >= 2) score = Math.min(10, 5 + eduCount);
+  return score;
 }

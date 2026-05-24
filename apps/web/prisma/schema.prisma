@@ -70,6 +70,7 @@ model SavedContent {
   contentType         String
   note                String?
   summary             String?
+  takeaways           String   @default("[]")
   emotionalTone       String?
   educationalRelevance Int?
   category            String?

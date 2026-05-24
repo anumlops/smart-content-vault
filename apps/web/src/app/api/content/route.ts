@@ -37,6 +37,7 @@ export async function GET(req: NextRequest) {
   const parsed = items.map((item) => ({
     ...item,
     tags: JSON.parse(item.tags ?? "[]"),
+    takeaways: JSON.parse(item.takeaways ?? "[]"),
   }));
 
   return NextResponse.json({ items: parsed, total });
@@ -71,7 +72,7 @@ export async function POST(req: NextRequest) {
 
   processContent(content.id, url).catch(console.error);
 
-  return NextResponse.json({ ...content, tags: JSON.parse(content.tags ?? "[]") }, { status: 201 });
+  return NextResponse.json({ ...content, tags: JSON.parse(content.tags ?? "[]"), takeaways: JSON.parse(content.takeaways ?? "[]") }, { status: 201 });
 }
 
 function detectContentType(url: string): string {
@@ -95,47 +96,25 @@ async function processContent(id: string, url: string) {
     let thumbnailUrl: string | null | undefined;
     let contentType: string | undefined;
     let summary: string | undefined;
+    let takeaways: string[] | undefined;
     let category: string | undefined;
     let tags: string[] | undefined;
     let emotionalTone: string | undefined;
     let educationalRelevance: number | undefined;
 
-    try {
-      const aiServiceUrl = process.env.AI_SERVICE_URL ?? "http://localhost:8000";
-      const res = await fetch(`${aiServiceUrl}/api/ai/process`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, url }),
-        signal: AbortSignal.timeout(15000),
-      });
+    console.log(`Processing content ${id} (${url})`);
 
-      if (res.ok) {
-        const result = await res.json();
-        title = result.title;
-        description = result.description;
-        thumbnailUrl = result.thumbnail_url;
-        contentType = result.content_type;
-        summary = result.summary;
-        category = result.category;
-        tags = result.tags ?? [];
-        emotionalTone = result.emotional_tone;
-        educationalRelevance = result.educational_relevance;
-      } else {
-        throw new Error(`AI service error: ${res.status}`);
-      }
-    } catch {
-      console.log("AI service unavailable, using inline processing");
-      const inline = await processContentInline(url);
-      title = inline.title;
-      description = inline.description;
-      thumbnailUrl = inline.thumbnailUrl;
-      contentType = inline.contentType;
-      summary = inline.summary;
-      category = inline.category;
-      tags = inline.tags;
-      emotionalTone = inline.emotionalTone;
-      educationalRelevance = inline.educationalRelevance;
-    }
+    const inline = await processContentInline(url);
+    title = inline.title;
+    description = inline.description;
+    thumbnailUrl = inline.thumbnailUrl;
+    contentType = inline.contentType;
+    summary = inline.summary;
+    takeaways = inline.takeaways;
+    category = inline.category;
+    tags = inline.tags;
+    emotionalTone = inline.emotionalTone;
+    educationalRelevance = inline.educationalRelevance;
 
     await prisma.savedContent.update({
       where: { id },
@@ -145,6 +124,7 @@ async function processContent(id: string, url: string) {
         thumbnailUrl,
         contentType,
         summary,
+        takeaways: JSON.stringify(takeaways ?? []),
         category,
         tags: JSON.stringify(tags ?? []),
         emotionalTone,

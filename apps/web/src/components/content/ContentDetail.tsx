@@ -20,6 +20,7 @@ import {
   FileText,
   Loader2,
   AlertCircle,
+  Lightbulb,
 } from "lucide-react";
 import { formatDate, getDomain, decodeHtmlEntities } from "@/lib/utils";
 import type { SavedContent, ProcessingStatus } from "@content-archive/shared";
@@ -113,6 +114,24 @@ export function ContentDetail({ content, onDelete }: ContentDetailProps) {
           <p className="text-sm leading-relaxed text-foreground/90">
             {decodeHtmlEntities(content.summary)}
           </p>
+        </div>
+      )}
+
+      {/* Key Takeaways */}
+      {content.takeaways && content.takeaways.length > 0 && (
+        <div className="rounded-xl bg-amber-500/5 border border-amber-500/15 p-5 space-y-3">
+          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
+            Key Takeaways
+          </div>
+          <ul className="space-y-2">
+            {content.takeaways.map((item, i) => (
+              <li key={i} className="text-sm leading-relaxed text-foreground/90 flex gap-2">
+                <span className="text-amber-500 mt-1 shrink-0">&#8226;</span>
+                <span>{decodeHtmlEntities(item)}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
