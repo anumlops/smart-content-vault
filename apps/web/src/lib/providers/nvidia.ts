@@ -10,6 +10,7 @@ export class NvidiaProvider implements AIProvider {
     const model = process.env.NVIDIA_MODEL || "meta/llama-4-maverick-17b-128e-instruct";
 
     if (!apiKey) {
+      console.log("[NvidiaProvider] NVIDIA_API_KEY is not configured");
       throw new Error("NVIDIA_API_KEY is not configured");
     }
 
@@ -22,6 +23,7 @@ export class NvidiaProvider implements AIProvider {
       .join("\n\n");
 
     if (!content.trim()) {
+      console.log("[NvidiaProvider] No content to analyze");
       throw new Error("No content to analyze");
     }
 
@@ -44,18 +46,33 @@ export class NvidiaProvider implements AIProvider {
       max_tokens: 1024,
     };
 
-    const res = await fetch(`${NVIDIA_API_BASE}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(30000),
-    });
+    const url = `${NVIDIA_API_BASE}/chat/completions`;
+    const startTime = Date.now();
+    console.log(`[NvidiaProvider] Request started — model: ${model}, content length: ${content.length}`);
+
+    let res;
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(60000),
+      });
+    } catch (err) {
+      const elapsed = Date.now() - startTime;
+      console.error(`[NvidiaProvider] Request failed after ${elapsed}ms:`, err);
+      throw err;
+    }
+
+    const elapsed = Date.now() - startTime;
+    console.log(`[NvidiaProvider] Response received — status: ${res.status}, elapsed: ${elapsed}ms`);
 
     if (!res.ok) {
       const errorText = await res.text().catch(() => "unknown");
+      console.error(`[NvidiaProvider] Error response body: ${errorText}`);
       throw new Error(`NVIDIA API error ${res.status}: ${errorText}`);
     }
 
@@ -69,6 +86,7 @@ export class NvidiaProvider implements AIProvider {
     const parsed = parseJsonResponse(raw);
     validateResult(parsed);
 
+    console.log(`[NvidiaProvider] Analysis complete — category: ${parsed.category}, tags: ${parsed.tags.length}, takeaways: ${parsed.takeaways.length}, tone: ${parsed.tone}`);
     return parsed;
   }
 }
