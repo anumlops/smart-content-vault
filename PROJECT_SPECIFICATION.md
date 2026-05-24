@@ -997,15 +997,16 @@ docker-compose up -d
 ## Appendix A: Runtime Configuration
 
 ### A.1 Authentication Secret
+Stored in `apps/web/.env` (gitignored). Generate with:
 ```
-AUTH_SECRET = fa69b9d6bb05e25bb0966eefae4048b221bcc80be2a744e61f836309824d77a6
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
 ### A.2 Environment Variables (.env)
 | Variable | Value | Notes |
 |----------|-------|-------|
 | `DATABASE_URL` | `file:./dev.db` | SQLite for local dev |
-| `AUTH_SECRET` | `fa69b9d6bb05e25bb0966eefae4048b221bcc80be2a744e61f836309824d77a6` | NextAuth JWT encryption |
+| `AUTH_SECRET` | *(generate, see A.1)* | NextAuth JWT encryption |
 | `NEXTAUTH_URL` | `http://localhost:3000` | App base URL |
 | `GITHUB_CLIENT_ID` | *(empty)* | Set for GitHub OAuth |
 | `GITHUB_CLIENT_SECRET` | *(empty)* | Set for GitHub OAuth |
