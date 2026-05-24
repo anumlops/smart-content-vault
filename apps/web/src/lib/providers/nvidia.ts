@@ -7,7 +7,7 @@ export class NvidiaProvider implements AIProvider {
 
   async process(title: string, description: string, text: string): Promise<AIProviderResult> {
     const apiKey = process.env.NVIDIA_API_KEY;
-    const model = process.env.NVIDIA_MODEL || "llama-4-maverick-17b-128e-instruct";
+    const model = process.env.NVIDIA_MODEL || "meta/llama-4-maverick-17b-128e-instruct";
 
     if (!apiKey) {
       throw new Error("NVIDIA_API_KEY is not configured");
