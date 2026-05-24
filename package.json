@@ -12,6 +12,7 @@
     "build": "npm run prisma:generate --workspace=apps/web && npm run build --workspace=apps/web",
     "start": "npm run start --workspace=apps/web",
     "lint": "npm run lint --workspace=apps/web",
+    "postinstall": "prisma generate --schema=apps/web/prisma/schema.prisma",
     "prisma:generate": "npm run prisma:generate --workspace=apps/web",
     "prisma:push": "npm run prisma:push --workspace=apps/web",
     "prisma:studio": "npm run prisma:studio --workspace=apps/web",
