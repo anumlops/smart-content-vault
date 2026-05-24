@@ -87,8 +87,8 @@ export async function extractMetadata(url: string): Promise<ExtractedMetadata> {
       }
     }
 
-    const textContent = extractTextContent(html);
-    result.text = decodeHtmlEntities(textContent.slice(0, 5000));
+    const textContent = cleanText(extractTextContent(html));
+    result.text = textContent.slice(0, 5000);
   } catch {
     // network errors are non-fatal for metadata extraction
   }
@@ -115,23 +115,217 @@ function extractTitle(html: string): string | null {
   return match ? match[1].trim() : null;
 }
 
+const SOCIAL_BOILERPLATE = [
+  /follow\s+(us|me|@\w+)/i,
+  /subscribe\s+(to\s+)?(our\s+)?(channel|newsletter|blog)/i,
+  /share\s+(this\s+)?(article|post|video|story)/i,
+  /click\s+(here\s+)?(to\s+)?(subscribe|share|read|learn|sign\s+up)/i,
+  /sign\s+up\s+(for\s+)?(our\s+)?(newsletter|updates|mailing\s+list)/i,
+  /all\s+rights?\s+reserved/i,
+  /copyright\s+©?\s*\d{4}/i,
+  /\d{4}\s+©?\s+all\s+rights?\s+reserved/i,
+  /privacy\s+(policy|settings?)/i,
+  /terms\s+(of\s+)?(service|use|conditions?)/i,
+  /cookie\s+(policy|settings|notice)/i,
+  /read\s+(the\s+)?(full\s+)?(article|story|post)/i,
+  /continue\s+reading/i,
+  /view\s+(on\s+)?(twitter|github|linkedin|facebook|instagram|youtube)/i,
+  /posted\s+(on|in)\s+(twitter|facebook|instagram|linkedin)/i,
+  /originally\s+published\s+(on|at)/i,
+  /this\s+(content|article|post)\s+was\s+(originally\s+)?(published|written)/i,
+  /^\s*advertisement\s*$/i,
+  /^\s*sponsored\s*$/i,
+  /^\s*promoted\s*$/i,
+  /^\s*photo(s)?\s*(by|credit|source)?\s*:?/i,
+  /^\s*image(s)?\s*(by|credit|source)?\s*:?/i,
+  /^\s*related\s+(articles?|posts?|stories?|videos?|content)/i,
+  /^\s*you\s+might\s+(also\s+)?like/i,
+  /^\s*more\s+(from|on)\s/i,
+  /^\s*tags?\s*:/i,
+  /^\s*share\s+this/i,
+  /^\s*leave\s+a\s+(reply|comment)/i,
+  /^\s*comments?\s*(are\s+)?(closed|disabled)/i,
+  /^\s*loading\s+comments?\.\.\./i,
+];
+
+const BOILERPLATE_MIN_LENGTH = 15;
+const DUPLICATE_SIMILARITY_THRESHOLD = 0.85;
+
 function extractTextContent(html: string): string {
-  const paragraphs: string[] = [];
-  const pPattern = /<p[^>]*>([\s\S]*?)<\/p>/gi;
-  let pMatch;
-  while ((pMatch = pPattern.exec(html)) !== null) {
-    const text = pMatch[1].replace(/<[^>]+>/g, "").trim();
-    if (text.length > 20) paragraphs.push(text);
+  const blocks: { text: string; priority: number }[] = [];
+  const seen = new Set<string>();
+
+  function addBlock(text: string, priority: number) {
+    const cleaned = text.replace(/<[^>]+>/g, "").trim();
+    if (!cleaned || cleaned.length < 15 || seen.has(cleaned)) return;
+    seen.add(cleaned);
+    blocks.push({ text: cleaned, priority });
   }
 
-  const headingPattern = /<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/gi;
-  let hMatch;
-  while ((hMatch = headingPattern.exec(html)) !== null) {
-    const text = hMatch[1].replace(/<[^>]+>/g, "").trim();
-    if (text.length > 10) paragraphs.push(text);
+  // 1. JSON-LD article body
+  extractJsonLdTexts(html).forEach((t) => addBlock(t, 0));
+
+  // 2. <article>
+  const articleMatch = html.match(/<article[^>]*>([\s\S]*?)<\/article>/i);
+  if (articleMatch) {
+    extractParagraphs(articleMatch[1]).forEach((t) => addBlock(t, 1));
+    extractHeadings(articleMatch[1]).forEach((t) => addBlock(t, 1));
   }
 
-  return paragraphs.join("\n");
+  // 3. <main> or [role="main"]
+  const mainMatch = html.match(/<(?:main|div)[^>]*?(?:role=["']main["']|id=["']main["'])[^>]*>([\s\S]*?)<\/(?:main|div)>/i)
+    || html.match(/<main[^>]*>([\s\S]*?)<\/main>/i);
+  if (mainMatch) {
+    extractParagraphs(mainMatch[1]).forEach((t) => addBlock(t, 2));
+  }
+
+  // 4. .post-content, .entry-content, .article-body, .story-body
+  const contentDiv = html.match(/<div[^>]*?(?:class|id)=["'][^"']*?(?:post-content|entry-content|article-body|story-body|content-body|article__content|post__body)[^"']*["'][^>]*>([\s\S]*?)<\/div>/i);
+  if (contentDiv) {
+    extractParagraphs(contentDiv[1]).forEach((t) => addBlock(t, 3));
+  }
+
+  // 5. Generic paragraphs (fallback)
+  extractParagraphs(html).forEach((t) => addBlock(t, 4));
+
+  // 6. Headings (fallback)
+  extractHeadings(html).forEach((t) => addBlock(t, 5));
+
+  blocks.sort((a, b) => a.priority - b.priority);
+
+  return blocks.map((b) => b.text).join("\n");
+}
+
+function extractJsonLdTexts(html: string): string[] {
+  const results: string[] = [];
+  const ldPattern = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let match;
+  while ((match = ldPattern.exec(html)) !== null) {
+    try {
+      const data = JSON.parse(match[1]);
+      const items = Array.isArray(data) ? data : [data];
+      for (const item of items) {
+        if (item.articleBody) results.push(item.articleBody);
+        if (item.description) results.push(item.description);
+        if (item.headline) results.push(item.headline);
+        if (item.text) results.push(item.text);
+      }
+    } catch {
+      // invalid JSON — skip
+    }
+  }
+  return results;
+}
+
+function extractParagraphs(html: string): string[] {
+  const results: string[] = [];
+  const pattern = /<p[^>]*>([\s\S]*?)<\/p>/gi;
+  let match;
+  while ((match = pattern.exec(html)) !== null) {
+    const text = match[1].replace(/<[^>]+>/g, "").trim();
+    if (text.length > 20) results.push(text);
+  }
+  return results;
+}
+
+function extractHeadings(html: string): string[] {
+  const results: string[] = [];
+  const pattern = /<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/gi;
+  let match;
+  while ((match = pattern.exec(html)) !== null) {
+    const text = match[1].replace(/<[^>]+>/g, "").trim();
+    if (text.length > 10) results.push(text);
+  }
+  return results;
+}
+
+function cleanText(raw: string): string {
+  let text = raw;
+
+  // 1. Decode HTML entities first (before any truncation)
+  text = decodeHtmlEntities(text);
+
+  // 2. Normalize whitespace — collapse multiple spaces, trim lines
+  text = text
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .replace(/\t/g, " ")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  // 3. Remove social-media boilerplate (line by line)
+  const lines = text.split("\n");
+  const cleaned: string[] = [];
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    if (trimmed.length < BOILERPLATE_MIN_LENGTH && /^[\W_]+$/.test(trimmed)) continue;
+    let isBoilerplate = false;
+    for (const pattern of SOCIAL_BOILERPLATE) {
+      if (pattern.test(trimmed)) {
+        isBoilerplate = true;
+        break;
+      }
+    }
+    if (!isBoilerplate) cleaned.push(trimmed);
+  }
+
+  // 4. Remove duplicate lines (fuzzy match)
+  const deduped = removeDuplicates(cleaned);
+
+  return deduped.join("\n");
+}
+
+function removeDuplicates(lines: string[]): string[] {
+  const result: string[] = [];
+  const normalized: string[] = [];
+
+  for (const line of lines) {
+    const norm = line.toLowerCase().replace(/[^a-z0-9\s]/g, "").trim();
+    let isDuplicate = false;
+    for (const existing of normalized) {
+      const sim = stringSimilarity(norm, existing);
+      if (sim >= DUPLICATE_SIMILARITY_THRESHOLD) {
+        isDuplicate = true;
+        break;
+      }
+    }
+    if (!isDuplicate) {
+      result.push(line);
+      normalized.push(norm);
+    }
+  }
+
+  return result;
+}
+
+function stringSimilarity(a: string, b: string): number {
+  if (a === b) return 1;
+  if (a.length < 10 || b.length < 10) return a === b ? 1 : 0;
+  const maxLen = Math.max(a.length, b.length);
+  const distance = levenshteinDistance(a.slice(0, 100), b.slice(0, 100));
+  return 1 - distance / maxLen;
+}
+
+function levenshteinDistance(a: string, b: string): number {
+  const m = a.length;
+  const n = b.length;
+  const dp: number[][] = [];
+  for (let i = 0; i <= m; i++) {
+    dp[i] = [i];
+  }
+  for (let j = 0; j <= n; j++) {
+    dp[0][j] = j;
+  }
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1]
+        : Math.min(dp[i - 1][j - 1], dp[i][j - 1], dp[i - 1][j]) + 1;
+    }
+  }
+  return dp[m][n];
 }
 
 function escapeRegex(str: string): string {

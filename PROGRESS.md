@@ -53,6 +53,12 @@ Make the Smart Content Vault app runnable end-to-end with proper auth, content i
 - [x] Created apps/web/.env with working AUTH_SECRET and config.
 - [x] Created scripts/auto-commit.ps1 — file watcher that auto-commits changes.
 - [x] All changes staged, committed, and pushed to GitHub.
+- [x] Improved text extraction pipeline in `processing.ts`:
+  - **Decode HTML entities** before truncation (avoids cutting entities in half)
+  - **Remove duplicate text** via fuzzy matching (Levenshtein distance, 85% threshold)
+  - **Remove social-media boilerplate** — 28 regex patterns (subscribe, share, copyright, etc.)
+  - **Normalize whitespace** — collapse spaces, trim lines, dedup empty lines
+  - **Extract meaningful content** — prioritized extraction from JSON-LD, `<article>`, `<main>`, content divs, then `<p>`/headings as fallback
 
 ### Blocked
 - (none)
