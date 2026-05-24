@@ -3,6 +3,11 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 type SavedContentItem = Awaited<ReturnType<typeof prisma.savedContent.findMany>>[number];
+type SearchResultItem = {
+  content: SavedContentItem & { tags: string[] };
+  score: number;
+  matchType: "semantic" | "keyword" | "hybrid";
+};
 
 async function fetchSemanticSearch(query: string, userId: string, limit: number): Promise<Map<string, number>> {
   const aiServiceUrl = process.env.AI_SERVICE_URL ?? "http://localhost:8000";
@@ -75,7 +80,7 @@ export async function GET(req: NextRequest) {
     semanticScores = await fetchSemanticSearch(query, user.id, limit);
   }
 
-  const results = items.map((item: SavedContentItem) => {
+  const results: SearchResultItem[] = items.map((item: SavedContentItem) => {
     let score = 0.5;
     let matchType: "semantic" | "keyword" | "hybrid" = "keyword";
 
