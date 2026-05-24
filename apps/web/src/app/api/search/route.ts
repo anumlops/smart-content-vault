@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 async function fetchSemanticSearch(query: string, userId: string, limit: number): Promise<Map<string, number>> {
@@ -25,8 +25,8 @@ async function fetchSemanticSearch(query: string, userId: string, limit: number)
 }
 
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const user = await getCurrentUser();
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ results: [], total: 0 });
   }
 
-  const where: any = { userId: session.user.id };
+  const where: any = { userId: user.id };
 
   if (query && type !== "semantic") {
     where.OR = [
@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
   // Get semantic scores if applicable
   let semanticScores = new Map<string, number>();
   if ((type === "hybrid" || type === "semantic") && query) {
-    semanticScores = await fetchSemanticSearch(query, session.user.id, limit);
+    semanticScores = await fetchSemanticSearch(query, user.id, limit);
   }
 
   const results = items.map((item) => {
@@ -104,7 +104,7 @@ export async function GET(req: NextRequest) {
   }
 
   await prisma.searchHistory.create({
-    data: { userId: session.user.id, query, resultCount: total },
+    data: { userId: user.id, query, resultCount: total },
   }).catch(() => {});
 
   return NextResponse.json({ results, total });

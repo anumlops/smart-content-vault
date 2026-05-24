@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 function parseContent(item: any) {
@@ -7,13 +7,13 @@ function parseContent(item: any) {
 }
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const user = await getCurrentUser();
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const content = await prisma.savedContent.findFirst({
-    where: { id: params.id, userId: session.user.id },
+    where: { id: params.id, userId: user.id },
   });
 
   if (!content) {
@@ -24,13 +24,13 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const user = await getCurrentUser();
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const content = await prisma.savedContent.findFirst({
-    where: { id: params.id, userId: session.user.id },
+    where: { id: params.id, userId: user.id },
   });
 
   if (!content) {
@@ -43,13 +43,13 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const user = await getCurrentUser();
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const content = await prisma.savedContent.findFirst({
-    where: { id: params.id, userId: session.user.id },
+    where: { id: params.id, userId: user.id },
   });
 
   if (!content) {

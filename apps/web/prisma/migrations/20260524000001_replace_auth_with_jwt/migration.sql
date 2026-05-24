@@ -1,0 +1,3 @@
+-- Replace Auth.js with JWT auth
+-- Applied manually via prisma db push --accept-data-loss
+-- This migration file exists to track the schema change in the migration history

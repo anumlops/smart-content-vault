@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { processContentInline } from "@/lib/processing";
 import { z } from "zod";
@@ -11,8 +11,8 @@ const createSchema = z.object({
 });
 
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const user = await getCurrentUser();
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(Number(searchParams.get("limit") ?? 20), 100);
   const offset = Math.max(Number(searchParams.get("offset") ?? 0), 0);
 
-  const where: any = { userId: session.user.id };
+  const where: any = { userId: user.id };
   if (category) where.category = category;
 
   const [items, total] = await Promise.all([
@@ -44,8 +44,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const user = await getCurrentUser();
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
 
   const content = await prisma.savedContent.create({
     data: {
-      userId: session.user.id,
+      userId: user.id,
       url,
       note,
       contentType: parsed.data.contentType ?? detectContentType(url),
