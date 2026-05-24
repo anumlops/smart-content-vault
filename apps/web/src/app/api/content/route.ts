@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { processContentInline } from "@/lib/processing";
+import type { SavedContent } from "@prisma/client";
 import { z } from "zod";
 
 const createSchema = z.object({
@@ -34,7 +35,7 @@ export async function GET(req: NextRequest) {
     prisma.savedContent.count({ where }),
   ]);
 
-  const parsed = items.map((item) => ({
+  const parsed = items.map((item: SavedContent) => ({
     ...item,
     tags: JSON.parse(item.tags ?? "[]"),
     takeaways: JSON.parse(item.takeaways ?? "[]"),
