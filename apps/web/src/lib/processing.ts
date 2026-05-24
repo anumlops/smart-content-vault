@@ -1,6 +1,8 @@
 import { decodeHtmlEntities } from "./utils";
 import { NvidiaProvider, KeywordProvider } from "./providers";
 import type { AIProvider, AIProviderResult } from "./providers";
+import { JSDOM } from "jsdom";
+import { Readability } from "@mozilla/readability";
 
 const nvidiaProvider = new NvidiaProvider();
 const keywordProvider = new KeywordProvider();
@@ -12,6 +14,31 @@ interface ExtractedMetadata {
   favicon: string | null;
   contentType: string;
   text: string;
+}
+
+const READABLE_MIN_LENGTH = 100;
+
+interface ReadabilityResult {
+  title: string;
+  byline: string;
+  text: string;
+}
+
+function extractWithReadability(html: string, url: string): ReadabilityResult | null {
+  try {
+    const dom = new JSDOM(html, { url });
+    const reader = new Readability(dom.window.document);
+    const article = reader.parse();
+    if (article?.textContent) {
+      const text = cleanText(article.textContent);
+      if (text.length >= READABLE_MIN_LENGTH) {
+        return { title: article.title || "", byline: article.byline || "", text };
+      }
+    }
+  } catch {
+    // Readability parse failure — fall back to regex
+  }
+  return null;
 }
 
 export async function extractMetadata(url: string): Promise<ExtractedMetadata> {
@@ -41,12 +68,24 @@ export async function extractMetadata(url: string): Promise<ExtractedMetadata> {
 
   try {
     const response = await fetch(url, {
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; ContentArchive/1.0)" },
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Referer": "https://www.google.com/",
+      },
       signal: AbortSignal.timeout(10000),
     });
-    if (!response.ok) return result;
+    const contentType = response.headers.get("content-type") || "unknown";
+    console.log(`[Extract] status=${response.status} contentType="${contentType}"`);
+
+    if (!response.ok) {
+      console.log(`[Extract] HTTP ${response.status} — returning early`);
+      return result;
+    }
 
     const html = await response.text();
+    console.log(`[Extract] htmlLength=${html.length}`);
     const domain = new URL(url).hostname.replace("www.", "");
     result.favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
 
@@ -67,10 +106,28 @@ export async function extractMetadata(url: string): Promise<ExtractedMetadata> {
       }
     }
 
-    const textContent = cleanText(extractTextContent(html));
-    result.text = textContent.slice(0, 5000);
-  } catch {
-    // network errors are non-fatal for metadata extraction
+    const readabilityResult = extractWithReadability(html, url);
+    let usedFallback = false;
+    if (readabilityResult) {
+      result.title = decodeHtmlEntities(readabilityResult.title) || result.title;
+      result.text = readabilityResult.text.slice(0, 5000);
+    } else {
+      usedFallback = true;
+      const textContent = cleanText(extractTextContent(html));
+      result.text = textContent.slice(0, 5000);
+    }
+    console.log(
+      `[Extract] readabilitySuccess=${!!readabilityResult}` +
+      ` readabilityTitle="${readabilityResult?.title || ""}"` +
+      ` readabilityTextLength=${readabilityResult?.text.length || 0}` +
+      ` usedFallback=${usedFallback}` +
+      ` finalTextLength=${result.text.length}`
+    );
+    if (!readabilityResult && result.text.length === 0) {
+      console.log(`[Extract] No article extracted. First 500 HTML chars: ${html.slice(0, 500)}`);
+    }
+  } catch (err) {
+    console.log(`[Extract] networkError="${(err as Error)?.message || err}" url="${url}"`);
   }
 
   return result;
