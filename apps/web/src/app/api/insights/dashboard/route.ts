@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+type SavedContentItem = Awaited<ReturnType<typeof prisma.savedContent.findMany>>[number];
+
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) {
@@ -61,7 +63,7 @@ export async function GET() {
 
   const weeklyActivity = buildWeeklyActivity(weeklyRaw.map((r: { createdAt: Date }) => r.createdAt));
 
-  const recentParsed = recentSaves.map((item) => ({
+  const recentParsed = recentSaves.map((item: SavedContentItem) => ({
     ...item,
     tags: JSON.parse(item.tags ?? "[]"),
   }));
