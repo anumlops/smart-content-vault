@@ -6,6 +6,10 @@ const nextConfig = {
     ],
   },
   transpilePackages: ["@content-archive/shared"],
+  experimental: {
+    optimizePackageImports: ["lucide-react", "recharts"],
+  },
+  optimizeFonts: false,
 };
 
 export default nextConfig;

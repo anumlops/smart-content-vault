@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { processContentInline } from "@/lib/processing";
 import { z } from "zod";
 
 const createSchema = z.object({
@@ -89,37 +90,70 @@ async function processContent(id: string, url: string) {
       data: { processingStatus: "processing" },
     });
 
-    const aiServiceUrl = process.env.AI_SERVICE_URL ?? "http://localhost:8000";
-    const res = await fetch(`${aiServiceUrl}/api/ai/process`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, url }),
-      signal: AbortSignal.timeout(30000),
-    });
+    let title: string | undefined;
+    let description: string | undefined;
+    let thumbnailUrl: string | null | undefined;
+    let contentType: string | undefined;
+    let summary: string | undefined;
+    let category: string | undefined;
+    let tags: string[] | undefined;
+    let emotionalTone: string | undefined;
+    let educationalRelevance: number | undefined;
 
-    if (!res.ok) {
-      throw new Error(`AI service error: ${res.status}`);
+    try {
+      const aiServiceUrl = process.env.AI_SERVICE_URL ?? "http://localhost:8000";
+      const res = await fetch(`${aiServiceUrl}/api/ai/process`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, url }),
+        signal: AbortSignal.timeout(15000),
+      });
+
+      if (res.ok) {
+        const result = await res.json();
+        title = result.title;
+        description = result.description;
+        thumbnailUrl = result.thumbnail_url;
+        contentType = result.content_type;
+        summary = result.summary;
+        category = result.category;
+        tags = result.tags ?? [];
+        emotionalTone = result.emotional_tone;
+        educationalRelevance = result.educational_relevance;
+      } else {
+        throw new Error(`AI service error: ${res.status}`);
+      }
+    } catch {
+      console.log("AI service unavailable, using inline processing");
+      const inline = await processContentInline(url);
+      title = inline.title;
+      description = inline.description;
+      thumbnailUrl = inline.thumbnailUrl;
+      contentType = inline.contentType;
+      summary = inline.summary;
+      category = inline.category;
+      tags = inline.tags;
+      emotionalTone = inline.emotionalTone;
+      educationalRelevance = inline.educationalRelevance;
     }
-
-    const result = await res.json();
 
     await prisma.savedContent.update({
       where: { id },
       data: {
-        title: result.title,
-        description: result.description,
-        thumbnailUrl: result.thumbnail_url,
-        contentType: result.content_type,
-        summary: result.summary,
-        category: result.category,
-        tags: JSON.stringify(result.tags ?? []),
-        emotionalTone: result.emotional_tone,
-        educationalRelevance: result.educational_relevance,
+        title,
+        description,
+        thumbnailUrl,
+        contentType,
+        summary,
+        category,
+        tags: JSON.stringify(tags ?? []),
+        emotionalTone,
+        educationalRelevance,
         processingStatus: "completed",
       },
     });
   } catch (err) {
-    console.error("AI processing failed:", err);
+    console.error("Processing failed:", err);
     await prisma.savedContent.update({
       where: { id },
       data: { processingStatus: "failed" },
