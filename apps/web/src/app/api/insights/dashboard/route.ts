@@ -59,7 +59,7 @@ export async function GET() {
     .slice(0, 4)
     .map(([name, count]) => ({ name, count, percentage: totalSaves > 0 ? Math.round((count / totalSaves) * 100) : 0 }));
 
-  const weeklyActivity = buildWeeklyActivity(weeklyRaw.map(r => r.createdAt));
+  const weeklyActivity = buildWeeklyActivity(weeklyRaw.map((r: { createdAt: Date }) => r.createdAt));
 
   const recentParsed = recentSaves.map((item) => ({
     ...item,
