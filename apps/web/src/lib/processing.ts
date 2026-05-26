@@ -74,7 +74,7 @@ export async function extractMetadata(url: string): Promise<ExtractedMetadata> {
         "Accept-Language": "en-US,en;q=0.9",
         "Referer": "https://www.google.com/",
       },
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(30000),
     });
     const contentType = response.headers.get("content-type") || "unknown";
     console.log(`[Extract] status=${response.status} contentType="${contentType}"`);
