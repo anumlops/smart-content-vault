@@ -27,9 +27,11 @@ interface ReadabilityResult {
 function extractYtInitialPlayerResponse(html: string): Record<string, any> | null {
   const marker = "ytInitialPlayerResponse";
   const startIdx = html.indexOf(marker);
+  console.log(`[ytExtract] htmlLength=${html.length} markerFound=${startIdx !== -1} startIdx=${startIdx}`);
   if (startIdx === -1) return null;
 
   const braceStart = html.indexOf("{", startIdx);
+  console.log(`[ytExtract] braceStart=${braceStart} contextAfterMarker="${html.slice(startIdx, startIdx + 80).replace(/\n/g, "\\n")}"`);
   if (braceStart === -1) return null;
 
   let depth = 0;
@@ -53,10 +55,15 @@ function extractYtInitialPlayerResponse(html: string): Record<string, any> | nul
     }
   }
 
+  console.log(`[ytExtract] endIdx=${endIdx} depth=${depth} charsScanned=${endIdx !== -1 ? endIdx - braceStart : "N/A"}`);
   if (endIdx === -1) return null;
+  const jsonSlice = html.slice(braceStart, endIdx + 1);
   try {
-    return JSON.parse(html.slice(braceStart, endIdx + 1));
-  } catch {
+    const parsed = JSON.parse(jsonSlice);
+    console.log(`[ytExtract] JSON.parse success hasVideoDetails=${!!parsed?.videoDetails}`);
+    return parsed;
+  } catch (err) {
+    console.log(`[ytExtract] JSON.parse failed lastChars="${jsonSlice.slice(-50).replace(/\n/g, "\\n")}" firstChars="${jsonSlice.slice(0, 100).replace(/\n/g, "\\n")}"`);
     return null;
   }
 }
