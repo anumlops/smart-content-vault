@@ -48,7 +48,7 @@ export default function ContentPage() {
     return (
       <DashboardLayout>
         <div className="max-w-4xl mx-auto text-center py-16">
-          <h2 className="text-xl font-semibold">Content not found</h2>
+          <h2 className="text-lg md:text-xl font-semibold">Content not found</h2>
           <Button variant="link" onClick={() => router.push("/dashboard")}>
             Back to dashboard
           </Button>

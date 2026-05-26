@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import {
   Play,
   Camera,
@@ -10,9 +11,10 @@ import {
   FileText,
   Globe,
   Clock,
-  ExternalLink,
 } from "lucide-react";
 import { cn, formatRelativeTime, getDomain, decodeHtmlEntities } from "@/lib/utils";
+import { getPlaceholderPath } from "@/lib/thumbnail";
+import { CATEGORY_META } from "@shared/index";
 import type { SavedContent } from "@shared/index";
 
 const typeIcons: Record<string, React.ReactNode> = {
@@ -39,34 +41,44 @@ interface ContentCardProps {
 }
 
 export function ContentCard({ content, score }: ContentCardProps) {
+  const catMeta = content.category ? CATEGORY_META[content.category] : null;
+  const placeholderPath = getPlaceholderPath(content.url);
+  const hasThumb = content.thumbnailUrl;
+
   return (
     <Link href={`/content/${content.id}`}>
       <Card className="group overflow-hidden transition-all duration-300 hover:shadow-md hover:border-primary/30 glass glass-hover">
         <CardContent className="p-0">
           <div className="flex flex-col sm:flex-row">
-            {content.thumbnailUrl && (
-              <div className="relative aspect-video sm:w-48 sm:aspect-auto sm:min-h-[120px] overflow-hidden bg-muted">
+            <div className="relative aspect-video sm:w-48 sm:aspect-auto sm:min-h-[132px] overflow-hidden bg-muted">
+              {hasThumb ? (
                 <img
-                  src={content.thumbnailUrl}
+                  src={content.thumbnailUrl!}
                   alt={content.title ?? ""}
                   className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = placeholderPath;
+                  }}
                 />
-                <div className={cn(
-                  "absolute top-2 left-2 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-medium",
-                  typeColors[content.contentType] ?? "bg-muted/80 text-muted-foreground"
-                )}>
-                  {typeIcons[content.contentType] ?? <Globe className="h-3 w-3" />}
-                  {content.contentType}
-                </div>
+              ) : (
+                <img
+                  src={placeholderPath}
+                  alt=""
+                  className="object-cover w-full h-full opacity-60"
+                />
+              )}
+              <div className={cn(
+                "absolute top-2 left-2 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-medium",
+                typeColors[content.contentType] ?? "bg-muted/80 text-muted-foreground"
+              )}>
+                {typeIcons[content.contentType] ?? <Globe className="h-3 w-3" />}
+                {content.contentType}
               </div>
-            )}
+            </div>
             <div className="flex-1 p-4 space-y-2 min-w-0">
-              <div className="flex items-start justify-between gap-2">
-                <h3 className="font-semibold leading-tight line-clamp-2 group-hover:text-primary transition-colors">
-                  {decodeHtmlEntities(content.title) || getDomain(content.url)}
-                </h3>
-                <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-1" />
-              </div>
+              <h3 className="font-semibold leading-tight line-clamp-2 group-hover:text-primary transition-colors break-words">
+                {decodeHtmlEntities(content.title) || getDomain(content.url)}
+              </h3>
 
               {content.description && (
                 <p className="text-sm text-muted-foreground line-clamp-2">
@@ -74,13 +86,33 @@ export function ContentCard({ content, score }: ContentCardProps) {
                 </p>
               )}
 
-              <div className="flex items-center gap-3 text-xs text-muted-foreground pt-1">
-                <span className="flex items-center gap-1">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground pt-1">
+                <span className="flex items-center gap-1 shrink-0">
                   <Clock className="h-3 w-3" />
                   {formatRelativeTime(content.createdAt)}
                 </span>
-                <span>{getDomain(content.url)}</span>
+                <span className="truncate max-w-[150px]">{getDomain(content.url)}</span>
+                {catMeta && (
+                  <Badge variant="secondary" className={cn("text-[10px] h-5 px-1.5 font-medium", catMeta.bg, catMeta.color)}>
+                    {content.category}
+                  </Badge>
+                )}
               </div>
+
+              {content.tags && content.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1 pt-0.5">
+                  {content.tags.slice(0, 3).map((tag) => (
+                    <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded-md bg-muted/50 text-muted-foreground">
+                      {tag}
+                    </span>
+                  ))}
+                  {content.tags.length > 3 && (
+                    <span className="text-[9px] text-muted-foreground">
+                      +{content.tags.length - 3}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </CardContent>
@@ -94,7 +126,7 @@ export function ContentCardSkeleton() {
     <Card className="overflow-hidden">
       <CardContent className="p-0">
         <div className="flex flex-col sm:flex-row">
-          <Skeleton className="aspect-video sm:w-48 sm:aspect-auto sm:min-h-[120px]" />
+          <Skeleton className="aspect-video sm:w-48 sm:aspect-auto sm:min-h-[132px]" />
           <div className="flex-1 p-4 space-y-3">
             <Skeleton className="h-5 w-3/4" />
             <Skeleton className="h-4 w-full" />

@@ -80,6 +80,8 @@ export async function POST(req: NextRequest) {
       description: metadata.description,
       thumbnailUrl: metadata.thumbnailUrl,
       contentType: parsed.data.contentType ?? detectContentType(url),
+      category: metadata.category,
+      tags: JSON.stringify(metadata.tags),
       processingStatus: "completed",
     },
   });

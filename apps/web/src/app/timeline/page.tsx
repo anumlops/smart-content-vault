@@ -27,7 +27,7 @@ export default function TimelinePage() {
     <DashboardLayout>
       <div className="space-y-6 max-w-4xl mx-auto">
         <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-tight">Timeline</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Timeline</h1>
           <p className="text-muted-foreground">
             Browse your saved content chronologically
           </p>
@@ -67,7 +67,7 @@ export default function TimelinePage() {
                     {entries.length} item{entries.length > 1 ? "s" : ""}
                   </span>
                 </div>
-                <div className="space-y-2 ml-9 border-l-2 border-border pl-4">
+                <div className="space-y-2 ml-4 sm:ml-9 border-l-2 border-border pl-3 sm:pl-4">
                   {entries.map((item: any) => (
                     <ContentCard key={item.id} content={item} />
                   ))}

@@ -1,4 +1,7 @@
 import { decodeHtmlEntities } from "./utils";
+import { categorize } from "./categorizer";
+import { generateTags } from "./tag-generator";
+import { getBestThumbnail } from "./thumbnail";
 
 interface ExtractedMetadata {
   title: string;
@@ -6,6 +9,8 @@ interface ExtractedMetadata {
   thumbnailUrl: string | null;
   favicon: string | null;
   contentType: string;
+  category: string;
+  tags: string[];
 }
 
 function extractMeta(html: string, property: string): string | null {
@@ -57,6 +62,8 @@ export async function extractMetadata(url: string): Promise<ExtractedMetadata> {
     thumbnailUrl: null,
     favicon: null,
     contentType: "website",
+    category: "Other",
+    tags: [],
   };
 
   const u = url.toLowerCase();
@@ -106,7 +113,7 @@ export async function extractMetadata(url: string): Promise<ExtractedMetadata> {
 
         result.title = decodeHtmlEntities(ogTitle || twitterTitle || extractTitle(html) || "");
         result.description = decodeHtmlEntities(result.description || ogDesc || twitterDesc || extractMeta(html, "description") || "");
-        result.thumbnailUrl = result.thumbnailUrl || ogImage || twitterImage || null;
+        result.thumbnailUrl = getBestThumbnail(result.thumbnailUrl, ogImage || twitterImage || null, url, result.contentType);
         result.favicon = `https://www.google.com/s2/favicons?domain=${getDomain(url)}&sz=64`;
       }
     } catch {
@@ -117,6 +124,10 @@ export async function extractMetadata(url: string): Promise<ExtractedMetadata> {
   if (!result.title) {
     result.title = getDomain(url);
   }
+
+  // Apply category and tags from title
+  result.category = categorize(result.title, url);
+  result.tags = generateTags(result.title, url);
 
   return result;
 }

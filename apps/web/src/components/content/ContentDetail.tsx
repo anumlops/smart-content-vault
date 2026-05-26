@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
   ExternalLink,
@@ -15,6 +16,8 @@ import {
   FileText,
 } from "lucide-react";
 import { formatDate, getDomain, decodeHtmlEntities } from "@/lib/utils";
+import { getPlaceholderPath } from "@/lib/thumbnail";
+import { CATEGORY_META } from "@shared/index";
 import type { SavedContent } from "@shared/index";
 import { cn } from "@/lib/utils";
 
@@ -33,36 +36,50 @@ interface ContentDetailProps {
 }
 
 export function ContentDetail({ content, onDelete }: ContentDetailProps) {
+  const catMeta = content.category ? CATEGORY_META[content.category] : null;
+  const placeholderPath = getPlaceholderPath(content.url);
+  const hasThumb = content.thumbnailUrl;
+
   return (
     <div className="space-y-6">
-      {/* Thumbnail */}
       <div className={cn(
         "relative w-full h-48 md:h-64 rounded-xl overflow-hidden bg-gradient-to-br from-primary/5 to-primary/10 border border-border/50 flex items-center justify-center",
-        content.thumbnailUrl && "border-0"
+        hasThumb && "border-0"
       )}>
-        {content.thumbnailUrl ? (
+        {hasThumb ? (
           <img
-            src={content.thumbnailUrl}
+            src={content.thumbnailUrl!}
             alt={content.title ?? ""}
             className="object-cover w-full h-full"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = placeholderPath;
+            }}
           />
         ) : (
-          <div className="text-4xl text-muted-foreground/30">
-            {typeIcons[content.contentType] ?? <Globe className="h-16 w-16" />}
-          </div>
+          <img
+            src={placeholderPath}
+            alt=""
+            className="object-cover w-full h-full opacity-60"
+          />
         )}
       </div>
 
-      {/* Title & Actions */}
       <div className="flex items-start justify-between gap-4">
-        <div className="space-y-2 min-w-0">
-          <h1 className="text-2xl font-bold break-words">{decodeHtmlEntities(content.title) || getDomain(content.url)}</h1>
-          <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+        <div className="space-y-2 min-w-0 flex-1">
+          <h1 className="text-xl md:text-2xl font-bold break-words">
+            {decodeHtmlEntities(content.title) || getDomain(content.url)}
+          </h1>
+          <p className="text-sm text-muted-foreground flex items-center gap-1.5 flex-wrap">
             {typeIcons[content.contentType]}
             <span className="capitalize">{content.contentType}</span>
             <span className="text-muted-foreground/40">&middot;</span>
             {getDomain(content.url)}
           </p>
+          {catMeta && (
+            <Badge variant="secondary" className={cn("text-xs px-2 py-0.5 font-medium", catMeta.bg, catMeta.color)}>
+              {content.category}
+            </Badge>
+          )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <Button variant="outline" size="icon" asChild>
@@ -78,7 +95,16 @@ export function ContentDetail({ content, onDelete }: ContentDetailProps) {
         </div>
       </div>
 
-      {/* Description */}
+      {content.tags && content.tags.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {content.tags.map((tag) => (
+            <span key={tag} className="text-[11px] px-2 py-1 rounded-md bg-primary/5 text-primary border border-primary/10">
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
+
       {content.description && (
         <div className="rounded-xl bg-muted/30 border border-border/50 p-5">
           <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap break-words">
@@ -89,7 +115,6 @@ export function ContentDetail({ content, onDelete }: ContentDetailProps) {
 
       <Separator />
 
-      {/* Metadata Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <div className="flex items-center gap-2.5 text-sm">
           <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -105,9 +130,19 @@ export function ContentDetail({ content, onDelete }: ContentDetailProps) {
             <p className="text-sm font-medium capitalize">{content.contentType}</p>
           </div>
         </div>
+        {content.category && (
+          <div className="flex items-center gap-2.5 text-sm">
+            <div className={cn("h-4 w-4 shrink-0 rounded flex items-center justify-center text-[10px]", catMeta?.bg, catMeta?.color)}>
+              {catMeta?.emoji}
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Category</p>
+              <p className="text-sm font-medium">{content.category}</p>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Original URL */}
       <div className="flex items-center gap-2.5 p-3 rounded-xl bg-muted/30 border border-border/50">
         <LinkIcon className="h-4 w-4 text-muted-foreground shrink-0" />
         <a
@@ -120,7 +155,6 @@ export function ContentDetail({ content, onDelete }: ContentDetailProps) {
         </a>
       </div>
 
-      {/* Note */}
       {content.note && (
         <>
           <Separator />
