@@ -10,7 +10,7 @@ export default function NewContentPage() {
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold tracking-tight">Save Content</h1>
           <p className="text-muted-foreground">
-            Paste any link and let AI do the rest
+            Paste a link and save it instantly
           </p>
         </div>
         <ContentForm />

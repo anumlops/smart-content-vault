@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { ThemeProvider } from "next-themes";
 import { Navbar } from "./Navbar";
 import { Sidebar } from "./Sidebar";
+import { Plus } from "lucide-react";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -19,6 +21,13 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             {children}
           </div>
         </main>
+        <Link
+          href="/content/new"
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 h-12 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors px-4 md:px-6"
+        >
+          <Plus className="h-5 w-5" />
+          <span className="hidden md:inline text-sm font-medium">Save Link</span>
+        </Link>
       </div>
     </ThemeProvider>
   );

@@ -1,16 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { processContentInline } from "@/lib/processing";
+import { extractMetadata } from "@/lib/processing";
 import { z } from "zod";
-
-type SavedContentItem = Awaited<ReturnType<typeof prisma.savedContent.findMany>>[number];
 
 const createSchema = z.object({
   url: z.string().url("Invalid URL"),
   note: z.string().optional(),
   contentType: z.string().optional(),
 });
+
+function detectContentType(url: string): string {
+  const u = url.toLowerCase();
+  if (u.includes("youtube.com") || u.includes("youtu.be")) return "youtube";
+  if (u.includes("instagram.com")) return "instagram";
+  if (u.includes("twitter.com") || u.includes("x.com")) return "twitter";
+  if (u.includes("medium.com") || u.includes("blog.")) return "blog";
+  return "website";
+}
 
 export async function GET(req: NextRequest) {
   const user = await getCurrentUser();
@@ -36,7 +43,7 @@ export async function GET(req: NextRequest) {
     prisma.savedContent.count({ where }),
   ]);
 
-  const parsed = items.map((item: SavedContentItem) => ({
+  const parsed = items.map((item: any) => ({
     ...item,
     tags: JSON.parse(item.tags ?? "[]"),
     takeaways: JSON.parse(item.takeaways ?? "[]"),
@@ -62,91 +69,24 @@ export async function POST(req: NextRequest) {
 
   const { url, note } = parsed.data;
 
+  const metadata = await extractMetadata(url);
+
   const content = await prisma.savedContent.create({
     data: {
       userId: user.id,
       url,
       note,
+      title: metadata.title,
+      description: metadata.description,
+      thumbnailUrl: metadata.thumbnailUrl,
       contentType: parsed.data.contentType ?? detectContentType(url),
-      processingStatus: "pending",
+      processingStatus: "completed",
     },
   });
 
-  processContent(content.id, url).catch(console.error);
-
-  return NextResponse.json({ ...content, tags: JSON.parse(content.tags ?? "[]"), takeaways: JSON.parse(content.takeaways ?? "[]") }, { status: 201 });
-}
-
-function detectContentType(url: string): string {
-  const u = url.toLowerCase();
-  if (u.includes("youtube.com") || u.includes("youtu.be")) return "youtube";
-  if (u.includes("instagram.com")) return "instagram";
-  if (u.includes("twitter.com") || u.includes("x.com")) return "twitter";
-  if (u.includes("medium.com") || u.includes("blog.")) return "blog";
-  return "website";
-}
-
-async function processContent(id: string, url: string) {
-  const t0 = Date.now();
-  try {
-    await prisma.savedContent.update({
-      where: { id },
-      data: { processingStatus: "processing" },
-    });
-    console.log(`[Timing] set processing status — ${Date.now() - t0}ms`);
-
-    let title: string | undefined;
-    let description: string | undefined;
-    let thumbnailUrl: string | null | undefined;
-    let contentType: string | undefined;
-    let summary: string | undefined;
-    let takeaways: string[] | undefined;
-    let category: string | undefined;
-    let tags: string[] | undefined;
-    let emotionalTone: string | undefined;
-    let educationalRelevance: number | undefined;
-
-    console.log(`Processing content ${id} (${url})`);
-
-    const t1 = Date.now();
-    const inline = await processContentInline(url);
-    console.log(`[Timing] processContentInline complete — ${Date.now() - t1}ms`);
-    title = inline.title;
-    description = inline.description;
-    thumbnailUrl = inline.thumbnailUrl;
-    contentType = inline.contentType;
-    summary = inline.summary;
-    takeaways = inline.takeaways;
-    category = inline.category;
-    tags = inline.tags;
-    emotionalTone = inline.emotionalTone;
-    educationalRelevance = inline.educationalRelevance;
-
-    const t2 = Date.now();
-    await prisma.savedContent.update({
-      where: { id },
-      data: {
-        title,
-        description,
-        thumbnailUrl,
-        contentType,
-        summary,
-        takeaways: JSON.stringify(takeaways ?? []),
-        category,
-        tags: JSON.stringify(tags ?? []),
-        emotionalTone,
-        educationalRelevance,
-        processingStatus: "completed",
-      },
-    });
-    console.log(`[Timing] final db update — ${Date.now() - t2}ms`);
-    console.log(`[Timing] TOTAL processContent — ${Date.now() - t0}ms`);
-  } catch (err) {
-    console.error("Processing failed:", err);
-    console.log(`[Timing] FAILED at ${Date.now() - t0}ms`);
-    await prisma.savedContent.update({
-      where: { id },
-      data: { processingStatus: "failed" },
-    }).catch(() => {});
-  }
+  return NextResponse.json({
+    ...content,
+    tags: JSON.parse(content.tags ?? "[]"),
+    takeaways: JSON.parse(content.takeaways ?? "[]"),
+  }, { status: 201 });
 }

@@ -15,7 +15,7 @@ export function InsightsWidget({ insights, topTags }: InsightsWidgetProps) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <Lightbulb className="h-5 w-5 text-yellow-500" />
-          AI Insights
+          Insights
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -30,7 +30,7 @@ export function InsightsWidget({ insights, topTags }: InsightsWidgetProps) {
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Save more content to receive personalized AI insights about your interests.
+            Save more content to see insights about your interests.
           </p>
         )}
 

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { Play, Camera, MessageCircle, FileText, Globe, Sparkles, Clock } from "lucide-react";
+import { Play, Camera, MessageCircle, FileText, Globe, Clock } from "lucide-react";
 import { formatRelativeTime, truncate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import type { SearchResult } from "@shared/index";
@@ -52,12 +52,6 @@ export function SearchResults({ results, query, total, loading }: SearchResultsP
         <p className="text-sm text-muted-foreground">
           Found {total ?? results.length} result{total !== 1 && "s"} for &ldquo;{query}&rdquo;
         </p>
-        {results.some(r => r.matchType !== "keyword") && (
-          <Badge variant="secondary" className="text-[10px] gap-1">
-            <Sparkles className="h-3 w-3" />
-            AI-powered
-          </Badge>
-        )}
       </div>
 
       <div className="space-y-2">
@@ -78,7 +72,7 @@ export function SearchResults({ results, query, total, loading }: SearchResultsP
                     {c.title ?? "Untitled"}
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                    {c.description ?? c.summary ?? "No description available"}
+                    {c.description ?? "No description available"}
                   </p>
                   <div className="flex items-center gap-2 mt-2 flex-wrap">
                     {c.category && (

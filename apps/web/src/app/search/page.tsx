@@ -9,8 +9,8 @@ import { useSearch } from "@/hooks/useSearch";
 import { cn } from "@/lib/utils";
 
 const searchModes = [
-  { key: "hybrid", label: "AI Hybrid", desc: "Best results" },
-  { key: "semantic", label: "Semantic", desc: "AI meaning" },
+  { key: "hybrid", label: "Hybrid", desc: "Best results" },
+  { key: "semantic", label: "Semantic", desc: "By meaning" },
   { key: "keyword", label: "Keyword", desc: "Text match" },
 ];
 
@@ -28,7 +28,7 @@ function SearchContent() {
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold tracking-tight">Search</h1>
           <p className="text-muted-foreground">
-            Search naturally &mdash; try &ldquo;that AI startup video&rdquo; or &ldquo;emotional father speech&rdquo;
+            Search your saved content
           </p>
         </div>
 

@@ -7,7 +7,7 @@ import { ContentCard } from "@/components/content/ContentCard";
 import { useContent, useDeleteContent } from "@/hooks/useContent";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Lightbulb } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import type { SavedContent } from "@shared/index";
 

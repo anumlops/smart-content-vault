@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Link, Loader2, Sparkles, Globe, Play, Camera, MessageCircle, FileText, CheckCircle2, AlertCircle, X } from "lucide-react";
+import { Link, Loader2, Globe, Play, Camera, MessageCircle, FileText, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -85,7 +85,7 @@ export function ContentForm() {
       const data = await res.json();
       toast({
         title: "Content saved!",
-        description: "AI is analyzing your content...",
+        description: "Link has been archived successfully.",
       });
       router.push(`/content/${data.id}`);
     } catch (err) {
@@ -103,7 +103,6 @@ export function ContentForm() {
     <Card className="glass-card">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-primary" />
           Save New Content
         </CardTitle>
         <CardDescription>

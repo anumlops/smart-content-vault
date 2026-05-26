@@ -41,7 +41,7 @@ export function SearchBar({ initialQuery = "", autoFocus = false, onSearch }: Se
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
       <Input
         ref={inputRef}
-        placeholder="Search your archive... try 'that emotional father video' or 'AI business model'"
+        placeholder="Search your archive..."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         className="pl-9 pr-20 h-12 text-base bg-background/80 backdrop-blur-sm"

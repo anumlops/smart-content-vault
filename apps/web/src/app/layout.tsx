@@ -6,8 +6,8 @@ import { Toaster } from "@/components/ui/toaster";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Content Archive - AI-Powered Bookmarking",
-  description: "Save, organize, and rediscover your favorite content with AI-powered search and categorization.",
+  title: "Content Archive",
+  description: "Save, organize, and rediscover your favorite content.",
 };
 
 export default function RootLayout({
