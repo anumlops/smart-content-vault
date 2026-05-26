@@ -23,7 +23,7 @@ import {
   Lightbulb,
 } from "lucide-react";
 import { formatDate, getDomain, decodeHtmlEntities } from "@/lib/utils";
-import type { SavedContent, ProcessingStatus } from "@content-archive/shared";
+import type { SavedContent, ProcessingStatus } from "@shared/index";
 import { cn } from "@/lib/utils";
 
 const statusConfig: Record<ProcessingStatus, { label: string; className: string; icon: React.ReactNode }> = {

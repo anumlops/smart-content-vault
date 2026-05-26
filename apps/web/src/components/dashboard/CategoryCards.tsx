@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CATEGORY_META } from "@content-archive/shared";
+import { CATEGORY_META } from "@shared/index";
 import { cn } from "@/lib/utils";
 
 interface CategoryCardsProps {

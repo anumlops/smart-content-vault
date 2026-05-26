@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Play, Camera, MessageCircle, FileText, Globe, Sparkles, Clock } from "lucide-react";
 import { formatRelativeTime, truncate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
-import type { SearchResult } from "@content-archive/shared";
+import type { SearchResult } from "@shared/index";
 
 const typeIcons: Record<string, React.ReactNode> = {
   youtube: <Play className="h-3.5 w-3.5" />,

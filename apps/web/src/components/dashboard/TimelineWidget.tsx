@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { formatRelativeTime } from "@/lib/utils";
-import { CATEGORY_META } from "@content-archive/shared";
+import { CATEGORY_META } from "@shared/index";
 import { cn } from "@/lib/utils";
-import type { SavedContent } from "@content-archive/shared";
+import type { SavedContent } from "@shared/index";
 
 const dotColors = [
   "border-indigo-500 bg-indigo-500/20",

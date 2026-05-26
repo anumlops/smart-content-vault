@@ -4,8 +4,8 @@ import Link from "next/link";
 import { Clock, Play, Camera, MessageCircle, FileText, Globe } from "lucide-react";
 import { cn, formatRelativeTime, getDomain } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import type { SavedContent } from "@content-archive/shared";
-import { CATEGORY_META } from "@content-archive/shared";
+import type { SavedContent } from "@shared/index";
+import { CATEGORY_META } from "@shared/index";
 
 const typeIcons: Record<string, React.ReactNode> = {
   youtube: <Play className="h-3.5 w-3.5" />,

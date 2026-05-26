@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Lightbulb } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import type { SavedContent } from "@content-archive/shared";
+import type { SavedContent } from "@shared/index";
 
 export default function ContentPage() {
   const params = useParams();

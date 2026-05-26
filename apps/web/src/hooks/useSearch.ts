@@ -1,7 +1,7 @@
 "use client";
 
 import useSWR from "swr";
-import type { SearchResult } from "@content-archive/shared";
+import type { SearchResult } from "@shared/index";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 

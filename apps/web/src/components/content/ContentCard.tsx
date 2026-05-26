@@ -17,7 +17,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { cn, formatRelativeTime, truncate, getDomain, decodeHtmlEntities } from "@/lib/utils";
-import type { SavedContent, ProcessingStatus } from "@content-archive/shared";
+import type { SavedContent, ProcessingStatus } from "@shared/index";
 
 const typeIcons: Record<string, React.ReactNode> = {
   youtube: <Play className="h-3 w-3" />,

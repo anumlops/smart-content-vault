@@ -1,7 +1,7 @@
 "use client";
 
 import { ContentCard, ContentCardSkeleton } from "./ContentCard";
-import type { SavedContent } from "@content-archive/shared";
+import type { SavedContent } from "@shared/index";
 
 interface ContentListProps {
   items: SavedContent[];
