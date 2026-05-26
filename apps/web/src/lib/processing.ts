@@ -86,6 +86,7 @@ function extractWithReadability(html: string, url: string): ReadabilityResult | 
 }
 
 export async function extractMetadata(url: string): Promise<ExtractedMetadata> {
+  const em0 = Date.now();
   const result: ExtractedMetadata = {
     title: "",
     description: "",
@@ -103,7 +104,9 @@ export async function extractMetadata(url: string): Promise<ExtractedMetadata> {
       result.thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
       try {
         const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`;
+        const ot0 = Date.now();
         const oembedRes = await fetch(oembedUrl, { signal: AbortSignal.timeout(5000) });
+        console.log(`[Timing] oembed fetch — ${Date.now() - ot0}ms status=${oembedRes.status}`);
         if (oembedRes.ok) {
           const oembedData = await oembedRes.json();
           result.title = decodeHtmlEntities(oembedData.title || "");
@@ -125,6 +128,7 @@ export async function extractMetadata(url: string): Promise<ExtractedMetadata> {
   }
 
   try {
+    const ft0 = Date.now();
     const response = await fetch(url, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36",
@@ -134,6 +138,7 @@ export async function extractMetadata(url: string): Promise<ExtractedMetadata> {
       },
       signal: AbortSignal.timeout(30000),
     });
+    console.log(`[Timing] main fetch headers — ${Date.now() - ft0}ms`);
     const contentType = response.headers.get("content-type") || "unknown";
     console.log(`[Extract] status=${response.status} contentType="${contentType}"`);
 
@@ -142,7 +147,9 @@ export async function extractMetadata(url: string): Promise<ExtractedMetadata> {
       return result;
     }
 
+    const rt0 = Date.now();
     const html = await response.text();
+    console.log(`[Timing] response.text() — ${Date.now() - rt0}ms`);
     console.log(`[Extract] htmlLength=${html.length}`);
     const domain = new URL(url).hostname.replace("www.", "");
     result.favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
@@ -210,6 +217,7 @@ export async function extractMetadata(url: string): Promise<ExtractedMetadata> {
     console.log(`[Extract] networkError="${(err as Error)?.message || err}" url="${url}"`);
   }
 
+  console.log(`[Timing] extractMetadata total — ${Date.now() - em0}ms`);
   return result;
 }
 
@@ -485,7 +493,9 @@ async function runWithFallback(
   console.log(`Trying provider: ${provider.name}`);
 
   try {
+    const pt0 = Date.now();
     const result = await provider.process(title, description, text);
+    console.log(`[Timing] ${provider.name}.process — ${Date.now() - pt0}ms`);
     console.log(`Provider ${provider.name} succeeded`);
     return result;
   } catch (err) {
@@ -495,8 +505,11 @@ async function runWithFallback(
 }
 
 export async function processContentInline(url: string): Promise<ProcessResult> {
+  const pci0 = Date.now();
   const metadata = await extractMetadata(url);
+  console.log(`[Timing] processContentInline extractMetadata — ${Date.now() - pci0}ms`);
   const aiResult = await runProviders(metadata.title, metadata.description, metadata.text);
+  console.log(`[Timing] processContentInline runProviders — ${Date.now() - pci0}ms`);
   const eduScore = computeEduScore(metadata.title, metadata.description, metadata.text);
 
   return {

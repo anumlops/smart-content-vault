@@ -87,11 +87,13 @@ function detectContentType(url: string): string {
 }
 
 async function processContent(id: string, url: string) {
+  const t0 = Date.now();
   try {
     await prisma.savedContent.update({
       where: { id },
       data: { processingStatus: "processing" },
     });
+    console.log(`[Timing] set processing status — ${Date.now() - t0}ms`);
 
     let title: string | undefined;
     let description: string | undefined;
@@ -106,7 +108,9 @@ async function processContent(id: string, url: string) {
 
     console.log(`Processing content ${id} (${url})`);
 
+    const t1 = Date.now();
     const inline = await processContentInline(url);
+    console.log(`[Timing] processContentInline complete — ${Date.now() - t1}ms`);
     title = inline.title;
     description = inline.description;
     thumbnailUrl = inline.thumbnailUrl;
@@ -118,6 +122,7 @@ async function processContent(id: string, url: string) {
     emotionalTone = inline.emotionalTone;
     educationalRelevance = inline.educationalRelevance;
 
+    const t2 = Date.now();
     await prisma.savedContent.update({
       where: { id },
       data: {
@@ -134,8 +139,11 @@ async function processContent(id: string, url: string) {
         processingStatus: "completed",
       },
     });
+    console.log(`[Timing] final db update — ${Date.now() - t2}ms`);
+    console.log(`[Timing] TOTAL processContent — ${Date.now() - t0}ms`);
   } catch (err) {
     console.error("Processing failed:", err);
+    console.log(`[Timing] FAILED at ${Date.now() - t0}ms`);
     await prisma.savedContent.update({
       where: { id },
       data: { processingStatus: "failed" },
