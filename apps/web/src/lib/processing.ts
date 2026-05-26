@@ -159,12 +159,14 @@ export async function extractMetadata(url: string): Promise<ExtractedMetadata> {
     result.thumbnailUrl = result.thumbnailUrl || ogImage || twitterImage || null;
 
     if (result.contentType === "youtube") {
-      console.log(`[Extract] ytCall htmlLength=${html.length} includesMarker=${html.includes("ytInitialPlayerResponse")}`);
+      const ytFound = html.includes("ytInitialPlayerResponse");
+      console.log(`[Extract] ytInitialPlayerResponse found=${ytFound}`);
+      console.log(`[Extract] ytCall htmlLength=${html.length} includesMarker=${ytFound}`);
       const ytData = extractYtInitialPlayerResponse(html);
       console.log(`[Extract] ytCall returnedNull=${!ytData} hasVideoDetails=${!!ytData?.videoDetails}`);
       if (ytData?.videoDetails) {
         const vd = ytData.videoDetails;
-        console.log(`[Extract] ytCall videoDetails.title="${vd.title}" shortDescriptionLength=${vd.shortDescription?.length || 0}`);
+        console.log(`[Extract] youtubeTitle="${vd.title}" descLength=${vd.shortDescription?.length || 0}`);
         result.title = decodeHtmlEntities(vd.title || result.title);
         result.description = decodeHtmlEntities(vd.shortDescription || result.description);
         if (vd.shortDescription) {
