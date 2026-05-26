@@ -24,6 +24,43 @@ interface ReadabilityResult {
   text: string;
 }
 
+function extractYtInitialPlayerResponse(html: string): Record<string, any> | null {
+  const marker = "ytInitialPlayerResponse";
+  const startIdx = html.indexOf(marker);
+  if (startIdx === -1) return null;
+
+  const braceStart = html.indexOf("{", startIdx);
+  if (braceStart === -1) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  let endIdx = -1;
+
+  for (let i = braceStart; i < html.length && i < braceStart + 200000; i++) {
+    const ch = html[i];
+    if (escape) { escape = false; continue; }
+    if (inString) {
+      if (ch === "\\") { escape = true; }
+      else if (ch === '"') { inString = false; }
+      continue;
+    }
+    if (ch === '"') { inString = true; continue; }
+    if (ch === "{") { depth++; }
+    else if (ch === "}") {
+      depth--;
+      if (depth === 0) { endIdx = i; break; }
+    }
+  }
+
+  if (endIdx === -1) return null;
+  try {
+    return JSON.parse(html.slice(braceStart, endIdx + 1));
+  } catch {
+    return null;
+  }
+}
+
 function extractWithReadability(html: string, url: string): ReadabilityResult | null {
   try {
     const dom = new JSDOM(html, { url });
@@ -57,6 +94,20 @@ export async function extractMetadata(url: string): Promise<ExtractedMetadata> {
     const videoId = getYoutubeId(url);
     if (videoId) {
       result.thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+      try {
+        const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`;
+        const oembedRes = await fetch(oembedUrl, { signal: AbortSignal.timeout(5000) });
+        if (oembedRes.ok) {
+          const oembedData = await oembedRes.json();
+          result.title = decodeHtmlEntities(oembedData.title || "");
+          if (oembedData.author_name) {
+            result.description = decodeHtmlEntities(oembedData.author_name);
+          }
+          console.log(`[Extract] oembedTitle="${result.title}"`);
+        }
+      } catch {
+        console.log(`[Extract] oembed failed — continuing`);
+      }
     }
   } else if (u.includes("instagram.com")) {
     result.contentType = "instagram";
@@ -96,9 +147,24 @@ export async function extractMetadata(url: string): Promise<ExtractedMetadata> {
     const twitterDesc = extractMeta(html, "twitter:description");
     const twitterImage = extractMeta(html, "twitter:image");
 
-    result.title = decodeHtmlEntities(ogTitle || twitterTitle || extractTitle(html) || "");
-    result.description = decodeHtmlEntities(ogDesc || twitterDesc || extractMeta(html, "description") || "");
+    result.title = decodeHtmlEntities(result.title || ogTitle || twitterTitle || extractTitle(html) || "");
+    result.description = decodeHtmlEntities(result.description || ogDesc || twitterDesc || extractMeta(html, "description") || "");
     result.thumbnailUrl = result.thumbnailUrl || ogImage || twitterImage || null;
+
+    if (result.contentType === "youtube") {
+      const ytData = extractYtInitialPlayerResponse(html);
+      if (ytData?.videoDetails) {
+        const vd = ytData.videoDetails;
+        result.title = decodeHtmlEntities(vd.title || result.title);
+        result.description = decodeHtmlEntities(vd.shortDescription || result.description);
+        if (vd.shortDescription) {
+          result.text = cleanText(vd.shortDescription).slice(0, 5000);
+        }
+        console.log(`[Extract] youtubeTitle="${vd.title}" descLength=${vd.shortDescription?.length || 0}`);
+      } else {
+        console.log(`[Extract] ytInitialPlayerResponse not found in HTML`);
+      }
+    }
 
     if (!result.contentType || result.contentType === "website") {
       if (extractMeta(html, "og:type") === "article" || html.includes("article")) {
@@ -108,22 +174,25 @@ export async function extractMetadata(url: string): Promise<ExtractedMetadata> {
 
     const readabilityResult = extractWithReadability(html, url);
     let usedFallback = false;
-    if (readabilityResult) {
-      result.title = decodeHtmlEntities(readabilityResult.title) || result.title;
-      result.text = readabilityResult.text.slice(0, 5000);
-    } else {
-      usedFallback = true;
-      const textContent = cleanText(extractTextContent(html));
-      result.text = textContent.slice(0, 5000);
+    if (!result.text) {
+      if (readabilityResult) {
+        result.title = decodeHtmlEntities(readabilityResult.title) || result.title;
+        result.text = readabilityResult.text.slice(0, 5000);
+      } else {
+        usedFallback = true;
+        const textContent = cleanText(extractTextContent(html));
+        result.text = textContent.slice(0, 5000);
+      }
     }
     console.log(
       `[Extract] readabilitySuccess=${!!readabilityResult}` +
       ` readabilityTitle="${readabilityResult?.title || ""}"` +
       ` readabilityTextLength=${readabilityResult?.text.length || 0}` +
       ` usedFallback=${usedFallback}` +
-      ` finalTextLength=${result.text.length}`
+      ` finalTextLength=${result.text.length}` +
+      ` finalTitle="${result.title}"`
     );
-    if (!readabilityResult && result.text.length === 0) {
+    if (result.text.length === 0) {
       console.log(`[Extract] No article extracted. First 500 HTML chars: ${html.slice(0, 500)}`);
     }
   } catch (err) {
