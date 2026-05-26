@@ -1,165 +1,121 @@
 # Deployment Guide
 
-## Architecture
+## Overview
 
-- **Hosting**: Vercel (serverless Next.js)
-- **Database**: Neon (serverless PostgreSQL)
-- **Auth**: NextAuth v5 (JWT strategy)
+Smart Content Vault is deployed as a Next.js application on Vercel with a PostgreSQL database on Neon.
 
 ---
 
-## 1. Neon Database Setup
+## Database Setup (Neon)
 
-1. Go to https://console.neon.tech and sign up (free tier: 0.5 GB, 100 compute hours/month).
-2. Create a new project.
-3. Copy the connection string from the dashboard:
-   ```
-   postgresql://user:password@ep-xxxx.us-east-2.aws.neon.tech/neondb?sslmode=require
-   ```
-4. Save this as `DATABASE_URL` — you'll need it for Vercel.
+1. Create a free account at [neon.tech](https://neon.tech)
+2. Create a new project
+3. Copy the connection string (starts with `postgresql://`)
 
 ---
 
-## 2. Vercel Setup
+## Vercel Deployment
 
-### 2.1 Create Project
+### 1. Connect repository
 
-1. Go to https://vercel.com and import your GitHub repo.
-2. Set **Root Directory** to `apps/web` (Vercel will auto-detect Next.js).
-3. Select **Next.js** framework.
+- Go to [vercel.com](https://vercel.com) and import your GitHub repository
+- Root directory: `apps/web`
+- Framework: Next.js
 
-The `vercel.json` at the repo root handles the monorepo configuration automatically.
+### 2. Configure environment variables
 
-### 2.2 Environment Variables
-
-Set these in Vercel Dashboard → Project → Settings → Environment Variables:
-
-| Variable | Required | Notes |
-|---|---|---|
+| Variable | Required | Description |
+|----------|----------|-------------|
 | `DATABASE_URL` | Yes | Neon PostgreSQL connection string |
-| `AUTH_SECRET` | Yes | Generate via `openssl rand -hex 32` or `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
-| `NEXTAUTH_URL` | Yes | Your Vercel deployment URL (e.g., `https://your-app.vercel.app`) |
-| `NEXTAUTH_SECRET` | Yes | Same value as `AUTH_SECRET` |
-| `GITHUB_CLIENT_ID` | Optional | For GitHub OAuth |
-| `GITHUB_CLIENT_SECRET` | Optional | For GitHub OAuth |
-| `GOOGLE_CLIENT_ID` | Optional | For Google OAuth |
-| `GOOGLE_CLIENT_SECRET` | Optional | For Google OAuth |
-| `NVIDIA_API_KEY` | Optional | For NVIDIA AI analysis |
-| `NVIDIA_MODEL` | Optional | Default: `meta/llama-4-maverick-17b-128e-instruct` |
+| `AUTH_SECRET` | Yes | JWT signing secret (32+ chars) |
+| `NEXTAUTH_URL` | Yes | Your production URL (e.g. `https://your-app.vercel.app`) |
 
-Add these to three environments: **Production**, **Preview**, and **Development**.
+### 3. Build settings
 
-### 2.3 Build Settings
+Vercel will auto-detect Next.js settings from `vercel.json`. Defaults:
 
-These are auto-configured by `vercel.json`:
+```json
+{
+  "buildCommand": "cd ../.. && npm install && cd apps/web && npm run build",
+  "outputDirectory": ".next",
+  "framework": "nextjs"
+}
+```
 
-| Setting | Value |
-|---|---|
-| Framework | Next.js |
-| Build Command | `npm run build` |
-| Output Directory | `apps/web/.next` |
-| Install Command | `npm install` |
+### 4. Deploy
+
+Vercel automatically deploys on every push to the `main` branch.
 
 ---
 
-## 3. Database Migration
+## Database Migrations
 
-After setting env vars on Vercel, trigger an initial deploy. Vercel will:
-
-1. Install dependencies (`npm install`)
-2. Generate Prisma client (`prisma generate` via build)
-3. Build Next.js (`next build`)
-
-**But migrations must be applied manually.** After the first deploy:
-
-```bash
-# Install Vercel CLI
-npm i -g vercel
-
-# Pull production env vars locally
-vercel pull --environment=production
-
-# Run migrations against production database
-cd apps/web
-npx prisma migrate deploy
-
-# Or if using db push:
-npx prisma db push
-```
-
-Alternatively, add a `postinstall` script or use Vercel's Post-Deploy hook to run:
-```bash
-npx prisma migrate deploy
-```
-
----
-
-## 4. Local Development with PostgreSQL
-
-### Option A: Neon (recommended)
-
-```bash
-# apps/web/.env
-DATABASE_URL="postgresql://user:password@ep-xxxx.us-east-2.aws.neon.tech/neondb?sslmode=require"
-```
-
-```bash
-npm run dev
-```
-
-### Option B: Local PostgreSQL
-
-```bash
-# Install PostgreSQL locally, then create a database
-createdb content-archive
-
-# apps/web/.env
-DATABASE_URL="postgresql://localhost:5432/content-archive"
-```
+Run after initial deploy or schema changes:
 
 ```bash
 npm run prisma:push
-npm run dev
+npm run prisma:seed
 ```
+
+For production, set `DATABASE_URL` to your Neon connection string first.
 
 ---
 
-## 5. Seed Data (Optional)
+## Local PostgreSQL Development
+
+### Option 1: Docker
 
 ```bash
-cd apps/web
-npx prisma db seed
+docker-compose up -d
 ```
 
-This creates a demo user (`demo@contentarchive.dev`) and sample content records.
+### Option 2: Local install
+
+Create the database:
+
+```bash
+createdb content-archive
+```
+
+Update `.env`:
+
+```
+DATABASE_URL="postgresql://localhost:5432/content-archive"
+```
+
+Push schema:
+
+```bash
+npm run prisma:generate
+npm run prisma:push
+npm run prisma:seed
+```
 
 ---
 
-## 6. Env File Template
+## Seed Data
 
-Copy `apps/web/.env.example` to `apps/web/.env`:
+The seed script creates:
 
-```env
-DATABASE_URL="postgresql://user:password@ep-xxxx.us-east-2.aws.neon.tech/neondb?sslmode=require"
-AUTH_SECRET="<run: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\">"
-NEXTAUTH_URL="http://localhost:3000"
+- Demo user: `demo` / `demodemo`
+- Sample saved content with various content types, categories, and tags
 
-GITHUB_CLIENT_ID=""
-GITHUB_CLIENT_SECRET=""
-GOOGLE_CLIENT_ID=""
-GOOGLE_CLIENT_SECRET=""
+Run with:
 
-NVIDIA_API_KEY=""
-NVIDIA_MODEL="meta/llama-4-maverick-17b-128e-instruct"
+```bash
+npm run prisma:seed
 ```
 
 ---
 
-## 7. Verify Production Readiness
+## Production Checklist
 
-- [ ] Neon database created and connection string saved
-- [ ] All env vars set in Vercel dashboard
-- [ ] First Vercel deploy succeeded
-- [ ] Migrations applied (`npx prisma migrate deploy`)
-- [ ] Demo user can sign in at `https://your-app.vercel.app/auth/signin`
-- [ ] Content can be saved and processed
+- [ ] `AUTH_SECRET` is a long random string (32+ characters)
+- [ ] `NEXTAUTH_URL` matches your production domain
+- [ ] `DATABASE_URL` points to a production Neon database (not local)
+- [ ] Environment variables are set in Vercel dashboard (not in `.env`)
+- [ ] Build succeeds with `npm run build` in the `apps/web` directory
+- [ ] Home page (`/`) redirects to `/dashboard` for authenticated users
+- [ ] Login/register flow works with demo credentials
+- [ ] Content saving, categorization, and tag generation work as expected
+- [ ] Search returns results across saved content

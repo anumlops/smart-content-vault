@@ -64,22 +64,6 @@ export const CONTENT_TYPE_ICONS: Record<string, string> = {
   website: "Globe",
 };
 
-export const EMOTIONAL_TONES = [
-  "neutral",
-  "positive",
-  "negative",
-  "inspirational",
-  "humorous",
-  "sad",
-  "exciting",
-  "thoughtful",
-  "motivational",
-  "educational",
-] as const;
-
-export const DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small";
-export const EMBEDDING_DIMENSIONS = 1536;
-
 export const SEARCH_LIMITS = {
   DEFAULT: 20,
   MAX: 100,
@@ -94,5 +78,4 @@ export const API_ENDPOINTS = {
   CONTENT: "/api/content",
   SEARCH: "/api/search",
   INSIGHTS: "/api/insights",
-  AI_PROCESS: "/api/ai/process",
 } as const;

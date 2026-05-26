@@ -60,7 +60,6 @@ export interface DashboardStats {
   categoryDistribution: Record<string, number>;
   recentSaves: SavedContent[];
   topTags: { tag: string; count: number }[];
-  insights: string[];
   weeklyActivity: { date: string; count: number }[];
 }
 
@@ -77,16 +76,4 @@ export interface UserProfile {
   image: string | null;
 }
 
-export interface AIPipelineResult {
-  title: string;
-  description: string;
-  thumbnailUrl: string | null;
-  contentType: ContentType;
-  summary: string;
-  takeaways: string[];
-  category: string;
-  tags: string[];
-  emotionalTone: string;
-  educationalRelevance: number;
-  embedding: number[];
-}
+

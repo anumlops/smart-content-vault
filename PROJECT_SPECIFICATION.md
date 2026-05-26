@@ -1,8 +1,8 @@
 # Smart Content Vault — Project Specification
 
-> **Version:** 1.0.0  
+> **Version:** 2.0.0  
 > **Status:** Approved Implementation  
-> **Stack:** Next.js 14 + FastAPI + PostgreSQL/pgvector  
+> **Stack:** Next.js 14 + PostgreSQL  
 > **Theme:** Dark SaaS (Inspired by Notion, Linear, Perplexity)
 
 ---
@@ -33,28 +33,28 @@
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
 │              CONTENT INGESTION LAYER                         │
-│  [URL Input] → [Metadata Extraction] → [OpenGraph Scraper]  │
-│              → [Transcript Extractor] → [Article Parser]     │
+│  [URL Input] → [Metadata Extraction] → [Title/OG Scraper]   │
+│              → [Thumbnail Extraction] → [Favicon Fetch]     │
 └──────────────────────────┬──────────────────────────────────┘
-                           │ Extract Content
+                           │ Extracted Content
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│               AI PROCESSING LAYER                            │
-│  [Content Analyzer] → [Category Generator] → [Tag Generator]│
-│         → [Summary Generator] → [Embedding Generator]       │
+│              CONTENT ORGANIZATION LAYER                      │
+│  [Category Assignment] → [Tag Generation]                   │
+│         (keyword-based, local, instant)                     │
 └──────────────────────────┬──────────────────────────────────┘
-                           │ Store Results
+                           │ Store
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                  STORAGE LAYER                               │
-│  PostgreSQL + pgvector                                      │
-│  [content] [categories] [tags] [users] [embeddings]         │
+│  PostgreSQL                                                 │
+│  [content] [categories] [tags] [users] [search history]     │
 └──────────────────────────┬──────────────────────────────────┘
-                           │ Index
+                           │ Query
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                  SEARCH LAYER                                │
-│     [Keyword Search] → [Semantic Search] → [Hybrid Ranking]  │
+│     [Keyword Search] → [Category Filter] → [Tag Match]      │
 └──────────────────────────┬──────────────────────────────────┘
                            │ Display
                            ▼
@@ -69,26 +69,27 @@
 
 **Content Save Pipeline:**
 ```
-User → Save URL → Extract Content → AI Processing → Database Storage → Search Engine → Dashboard Display
+User → Save URL → Extract Metadata → Categorize → Generate Tags → Database Storage → Dashboard Display
 ```
 
 **Search Pipeline:**
 ```
-User Query → Search Parser → Embed Query → Vector Search → Hybrid Ranking → Results Display
+User Query → Keyword Match → Category Filter → Results Display
 ```
 
 ### 1.3 System Architecture
 
 ```
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│   Next.js 14 │────▶│  FastAPI AI  │────▶│  PostgreSQL  │
-│   (App Router)│    │  Service     │    │  + pgvector  │
-│   :3000      │     │  :8000       │    │  :5432       │
-└──────────────┘     └──────────────┘     └──────────────┘
-        │                    │
-        │  NextAuth v5       │  OpenAI / sentence-transformers
-        │  GitHub / Google   │  YouTube Transcript API
-        └────────────────────┘  BeautifulSoup / newspaper3k
+┌──────────────┐     ┌──────────────┐
+│   Next.js 14 │────▶│  PostgreSQL  │
+│   (App Router)│    │              │
+│   :3000      │     │  :5432       │
+└──────────────┘     └──────────────┘
+        │
+        │  Custom JWT Auth (jose + bcryptjs)
+        │  Content Extraction via fetch + regex
+        │  Category/Tag via keyword matching
+        └────────────────────────────────────
 ```
 
 ---
@@ -102,23 +103,23 @@ User Query → Search Parser → Embed Query → Vector Search → Hybrid Rankin
 │      User       │       │    SavedContent      │
 ├─────────────────┤       ├─────────────────────┤
 │ id (PK)         │◀──────│ userId (FK)          │
-│ name            │       │ id (PK)              │
-│ email (unique)  │       │ url                  │
-│ emailVerified   │       │ title                │
-│ image           │       │ description          │
+│ username        │       │ id (PK)              │
+│ passwordHash    │       │ url                  │
+│ name            │       │ title                │
+│ email           │       │ description          │
 │ createdAt       │       │ thumbnailUrl         │
 │ updatedAt       │       │ contentType          │
 └─────────────────┘       │ note                 │
-        │                 │ summary              │
-        │                 │ emotionalTone        │
-        ▼                 │ educationalRelevance │
-┌─────────────────┐       │ category             │
-│  SearchHistory  │       │ tags (JSON string)   │
-├─────────────────┤       │ processingStatus     │
-│ id (PK)         │       │ embedding (vector)   │
-│ userId (FK)     │       │ createdAt            │
-│ query           │       │ updatedAt            │
-│ resultCount     │       └─────────────────────┘
+        │                 │ category             │
+        │                 │ tags (JSON string)   │
+        ▼                 │ processingStatus     │
+┌─────────────────┐       │ createdAt            │
+│  SearchHistory  │       │ updatedAt            │
+├─────────────────┤       └─────────────────────┘
+│ id (PK)         │
+│ userId (FK)     │
+│ query           │
+│ resultCount     │
 │ savedContentId  │
 │ createdAt       │
 └─────────────────┘
@@ -132,18 +133,16 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"  // sqlite for dev
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 model User {
   id            String          @id @default(cuid())
+  username      String          @unique
+  passwordHash  String
   name          String?
-  email         String?         @unique
-  emailVerified DateTime?
-  image         String?
-  accounts      Account[]
-  sessions      Session[]
+  email         String?
   savedContents SavedContent[]
   searchHistory SearchHistory[]
   createdAt     DateTime        @default(now())
@@ -151,26 +150,19 @@ model User {
 }
 
 model SavedContent {
-  id                  String   @id @default(cuid())
-  userId              String
-  url                 String
-  title               String?
-  description         String?
-  thumbnailUrl        String?
-  contentType         String   @default("website")
-  note                String?
-  summary             String?
-  emotionalTone       String?
-  educationalRelevance Int?
-  category            String?
-  tags                String   @default("[]")
-  processingStatus    String   @default("pending")
-
-  // pgvector embedding (managed by AI service)
-  // embedding vector(384) -- not in Prisma, added manually
-
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id               String   @id @default(cuid())
+  userId           String
+  url              String
+  title            String?
+  description      String?
+  thumbnailUrl     String?
+  contentType      String   @default("website")
+  note             String?
+  category         String?
+  tags             String   @default("[]")
+  processingStatus String   @default("pending")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   searchHistory  SearchHistory[]
@@ -181,12 +173,12 @@ model SavedContent {
 }
 
 model SearchHistory {
-  id            String   @id @default(cuid())
-  userId        String
-  query         String
-  resultCount   Int      @default(0)
+  id             String   @id @default(cuid())
+  userId         String
+  query          String
+  resultCount    Int      @default(0)
   savedContentId String?
-  createdAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   savedContent SavedContent? @relation(fields: [savedContentId], references: [id], onDelete: SetNull)
@@ -194,8 +186,6 @@ model SearchHistory {
   @@index([userId])
   @@index([userId, createdAt])
 }
-
-// NextAuth models: Account, Session, VerificationToken
 ```
 
 ### 2.3 Indexes
@@ -205,7 +195,6 @@ model SearchHistory {
 | SavedContent | `userId` | B-tree |
 | SavedContent | `category` | B-tree |
 | SavedContent | `createdAt` | B-tree |
-| SavedContent | `embedding` | IVFFlat (pgvector) |
 | SearchHistory | `(userId, createdAt)` | Composite B-tree |
 
 ---
@@ -232,16 +221,13 @@ List saved content for the authenticated user.
       "id": "clx...",
       "userId": "clx...",
       "url": "https://youtube.com/watch?v=...",
-      "title": "Building AI Agents",
-      "description": "A deep dive...",
+      "title": "Building MLOps Pipeline Using Kubeflow",
+      "description": "Kubeflow",
       "thumbnailUrl": "https://img.youtube.com/vi/.../maxresdefault.jpg",
       "contentType": "youtube",
-      "note": "Great talk",
-      "summary": "Explores patterns for deploying AI agents...",
-      "emotionalTone": "educational",
-      "educationalRelevance": 9,
-      "category": "AI",
-      "tags": ["AI Agents", "Production"],
+      "note": "Great walkthrough",
+      "category": "MLOps",
+      "tags": ["mlops", "kubeflow", "pipeline"],
       "processingStatus": "completed",
       "createdAt": "2026-05-24T10:30:00Z",
       "updatedAt": "2026-05-24T10:32:00Z"
@@ -252,7 +238,7 @@ List saved content for the authenticated user.
 ```
 
 #### `POST /api/content`
-Save new content from a URL.
+Save new content from a URL. Metadata is extracted immediately, category and tags are assigned synchronously.
 
 **Body:**
 ```json
@@ -262,8 +248,7 @@ Save new content from a URL.
 }
 ```
 
-**Response:** `201 Created` — Single SavedContent object.  
-**Processing:** Immediately triggers async `processContent()` → calls AI service to extract/classify/summarize/embed.
+**Response:** `201 Created` — Single SavedContent object with category, tags, and processingStatus="completed".
 
 #### `GET /api/content/[id]`
 Get single content item.
@@ -277,13 +262,13 @@ Delete content (ownership check). Returns `204 No Content`.
 Update note, category, or tags.
 
 #### `GET /api/search`
-Search content with hybrid ranking.
+Search content with keyword matching.
 
 **Query Params:**
 | Param | Type | Default | Description |
 |-------|------|---------|-------------|
 | q | string | — | Search query |
-| type | enum | "hybrid" | "hybrid" \| "semantic" \| "keyword" |
+| type | enum | "keyword" | "keyword" only |
 | category | string | — | Filter by category |
 | limit | number | 20 | Max items |
 | offset | number | 0 | Pagination |
@@ -294,8 +279,8 @@ Search content with hybrid ranking.
   "results": [
     {
       "content": { /* SavedContent */ },
-      "score": 0.94,
-      "matchType": "hybrid"
+      "score": 0.5,
+      "matchType": "keyword"
     }
   ],
   "total": 15
@@ -303,9 +288,7 @@ Search content with hybrid ranking.
 ```
 
 **Scoring Logic:**
-- `keyword`: Simple contains-match across title/description/summary/category/note/tags. Score = 0.5
-- `semantic`: Vector cosine similarity via pgvector. Score = similarity (0-1)
-- `hybrid`: `0.6 × semantic_score + 0.4 × keyword_score`. Falls back to keyword if AI service unavailable.
+- Simple contains-match across title, description, category, notes, and tags.
 
 #### `GET /api/insights/dashboard`
 Aggregated dashboard statistics.
@@ -314,94 +297,16 @@ Aggregated dashboard statistics.
 ```json
 {
   "totalSaves": 42,
-  "categoryDistribution": { "AI": 15, "Startups": 8, ... },
-  "popularCategories": [
-    { "name": "AI", "count": 15, "percentage": 36 }
-  ],
+  "categoryDistribution": { "MLOps": 10, "Programming": 8, ... },
   "recentSaves": [ /* SavedContent[] */ ],
   "topTags": [
-    { "tag": "machine learning", "count": 12 }
-  ],
-  "insights": [
-    "Your top category is AI with 15 of 42 saved items.",
-    "You frequently save content about 'machine learning'."
+    { "tag": "react", "count": 8 }
   ],
   "weeklyActivity": [
     { "date": "2026-05-18", "count": 3 }
   ]
 }
 ```
-
-### 3.2 AI Service API (FastAPI)
-
-#### `POST /api/ai/process`
-Extract, classify, and summarize content from a URL.
-
-**Body:**
-```json
-{
-  "id": "clx...",
-  "url": "https://youtube.com/watch?v=..."
-}
-```
-
-**Response:**
-```json
-{
-  "id": "clx...",
-  "title": "Building AI Agents",
-  "description": "A deep dive...",
-  "thumbnail_url": "https://img.youtube.com/vi/.../maxresdefault.jpg",
-  "content_type": "youtube",
-  "summary": "Explores patterns for deploying AI agents...",
-  "category": "AI",
-  "tags": ["AI Agents", "Production", "LLM"],
-  "emotional_tone": "educational",
-  "educational_relevance": 9
-}
-```
-
-**Pipeline:**
-1. **Extract** — Fetch OG tags, YouTube transcript, article text
-2. **Classify** — OpenAI GPT-4o-mini (JSON mode) → keyword fallback
-3. **Summarize** — OpenAI GPT-4o-mini → extractive fallback
-
-#### `POST /api/ai/embed`
-Generate and store vector embedding.
-
-**Body:**
-```json
-{
-  "id": "clx...",
-  "text": "Text to embed (title + summary + category + tags)"
-}
-```
-
-**Response:** `{ "status": "ok", "dimensions": 384 }`
-
-**Embedding Models:**
-- Local: `sentence-transformers/all-MiniLM-L6-v2` (384-dim)
-- OpenAI: `text-embedding-3-small` (1536-dim)
-
-#### `GET /api/search`
-Semantic vector search.
-
-**Query Params:** `q` (query), `user_id`, `limit`
-
-**Response:**
-```json
-{
-  "results": [
-    { "content_id": "clx...", "score": 0.92 }
-  ],
-  "query": "AI agents"
-}
-```
-
-**Implementation:** `SELECT *, embedding <=> $query_embedding AS distance FROM "SavedContent" WHERE "userId" = $user_id ORDER BY distance LIMIT $limit`
-
-#### `GET /health`
-Health check. Returns `{ "status": "ok", "service": "ai-service" }`
 
 ---
 
@@ -411,41 +316,41 @@ Health check. Returns `{ "status": "ok", "service": "ai-service" }`
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  🔍  Search your content vault...              [Ctrl+K] │
+│  🔍  Search your content archive...            [Ctrl+K] │
 ├─────────────────────────────────────────────────────────┤
 │  Recently Saved                                         │
 │  ┌──────────────────────────────────────────────┐       │
-│  │ ▶  Building AI Agents in Production          │       │
-│  │    YouTube · 2h ago · youtube.com      [AI]  │       │
+│  │ ▶  Building MLOps Pipeline Using Kubeflow    │       │
+│  │    YouTube · 2h ago · youtube.com    [MLOps] │       │
 │  ├──────────────────────────────────────────────┤       │
-│  │ ✏  The Future of Semantic Search             │       │
-│  │    Blog · 5h ago · example.com       [Search] │       │
+│  │ ✏  Python for Beginners Tutorial             │       │
+│  │    Blog · 5h ago · example.com  [Programming]│       │
 │  └──────────────────────────────────────────────┘       │
 │                                                         │
 │  Categories                                             │
 │  ┌──────────────┐  ┌──────────────┐                    │
-│  │ 🤖 AI & ML   │  │ 💻 Software  │                    │
-│  │ 24 items     │  │ 15 items     │                    │
+│  │ 🛠 DevOps    │  │ 💻 Program. │                    │
+│  │ 12 items     │  │ 15 items     │                    │
 │  │ ▓▓▓▓▓░░░░░░  │  │ ▓▓▓░░░░░░░  │                    │
 │  ├──────────────┤  ├──────────────┤                    │
-│  │ 📊 Startups  │  │ 🎓 Design    │                    │
-│  │ 20 items     │  │ 10 items     │                    │
+│  │ 🚀 Startups  │  │ 🎓 Education │                    │
+│  │ 8 items      │  │ 10 items     │                    │
 │  │ ▓▓▓▓▓▓░░░░░  │  │ ▓▓▓░░░░░░░  │                    │
 │  └──────────────┘  └──────────────┘                    │
 │                                                         │
 │  Timeline                                               │
-│  ● Building AI Agents in Production                     │
+│  ● Building MLOps Pipeline Using Kubeflow               │
 │  │ Saved 2h ago · YouTube                              │
-│  ● The Future of Semantic Search                        │
+│  ● Python for Beginners Tutorial                        │
 │  │ Saved 5h ago · Blog                                 │
-│  ● RAG vs Fine-Tuning Explained                        │
+│  ● Docker Crash Course                                  │
 │    Saved 1d ago · YouTube                              │
 └─────────────────────────────────────────────────────────┘
 ```
 
 **Key elements:**
-- Search bar with Ctrl+K badge at top
-- Recently saved list: type icon (colored), title, metadata line (source · time · domain), category badge
+- Search bar with keyboard shortcut at top
+- Recently saved list: type icon, title, metadata line (source · time · domain), category badge
 - Category cards: emoji, name, item count, proportional progress bar
 - Timeline: vertical connector lines with colored dots, title, relative time, source
 
@@ -453,8 +358,8 @@ Health check. Returns `{ "status": "ok", "service": "ai-service" }`
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  ✨ Save New Content                                    │
-│  Paste any link — YouTube, Instagram, Twitter/X, etc.   │
+│  📑 Save New Content                                    │
+│  Paste a link and save it instantly                     │
 ├─────────────────────────────────────────────────────────┤
 │  URL                                                    │
 │  ┌──────────────────────────────────────────────────┐   │
@@ -478,7 +383,7 @@ Health check. Returns `{ "status": "ok", "service": "ai-service" }`
 **Key elements:**
 - URL input with real-time validation (green checkmark / red alert)
 - Multi-line notes textarea
-- URL preview card: type icon + detected source + full URL
+- URL preview card: type icon + detected source + truncated URL
 - Save + Cancel buttons
 
 ### 4.3 Search Page
@@ -486,33 +391,31 @@ Health check. Returns `{ "status": "ok", "service": "ai-service" }`
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  Search                                                 │
-│  🔍  Search your vault with AI...                        │
+│  Search your saved content                              │
 │  ┌──────────────────────────────────────────────────┐   │
-│  │ 🔍 semantic search                        [↵]    │   │
+│  │ 🔍 kubeflow pipeline                    [Search] │   │
 │  └──────────────────────────────────────────────────┘   │
 │                                                         │
-│  [AI Hybrid]  [Semantic]  [Keyword]                     │
-│                                                         │
-│  Found 3 results for "semantic search"                   │
+│  Found 2 results for "kubeflow pipeline"                │
 │                                                         │
 │  ┌──────────────────────────────────────────┬──────┐    │
-│  │ ▶ Semantic Search with Vector Embeddings │ 98   │    │
-│  │   A deep dive into how semantic search   │Match │    │
-│  │   works using vector embeddings...       │      │    │
-│  │   [AI]  YouTube · 12 min                 │      │    │
+│  │ ▶ Building MLOps Pipeline Using Kubeflow │ 50   │    │
+│  │   A comprehensive guide to building      │Match │    │
+│  │   ML pipelines with Kubeflow...          │      │    │
+│  │   [MLOps]  YouTube · 2h ago             │      │    │
 │  ├──────────────────────────────────────────┼──────┤    │
-│  │ ✏ Building a Hybrid Search Engine for RAG│ 94   │    │
-│  │   Combining keyword and semantic search  │Match │    │
-│  │   [Search]  Blog · 8 min                 │      │    │
+│  │ ✏ Kubeflow 101: Getting Started          │ 50   │    │
+│  │   Introduction to Kubeflow for           │Match │    │
+│  │   machine learning workflows             │      │    │
+│  │   [MLOps]  Blog · 1d ago                │      │    │
 │  └──────────────────────────────────────────┴──────┘    │
 └─────────────────────────────────────────────────────────┘
 ```
 
 **Key elements:**
-- Prominent search bar with pre-filled value
-- Mode chips: AI Hybrid (default), Semantic, Keyword
-- Result cards: thumbnail, title, 2-line description, metadata badges, relevance score on right
-- Relevance score: large number (0-100) + "Match" label
+- Search bar with pre-filled value and large hit area
+- Result cards: thumbnail, title, 2-line description, category badge, type, time, domain
+- Match score indicator on right
 
 ### 4.4 Content Detail Page
 
@@ -524,32 +427,35 @@ Health check. Returns `{ "status": "ok", "service": "ai-service" }`
 │  │              ▶  Video Thumbnail                 │     │
 │  └────────────────────────────────────────────────┘     │
 │                                                         │
-│  Building AI Agents in Production                        │
-│  ▶ youtube · youtube.com                      [🔗][🗑] │
+│  Building MLOps Pipeline Using Kubeflow                  │
+│  ▶ youtube · youtube.com     [MLOps]         [🔗][🗑] │
 │                                                         │
-│  ┌────────────────────────────────────────────────┐     │
-│  │ 🧠 AI-Generated Summary                        │     │
-│  │ This talk explores practical patterns for      │     │
-│  │ building and deploying AI agents in production │     │
-│  │ environments...                                │     │
-│  └────────────────────────────────────────────────┘     │
+│  [mlops] [kubeflow] [pipeline] [machine-learning]       │
 │                                                         │
-│  [AI Agents] [Production] [LLM] [Tool Use]              │
+│  This guide walks through setting up a complete MLOps   │
+│  pipeline using Kubeflow...                              │
+│                                                         │
 │  ─────────────────────────────────────────────────────  │
-│  🕐 Saved          📅 Type        ❤️ Tone      🎓 Edu │
-│  May 24, 2026      youtube     educational    9/10     │
+│  🕐 Saved          📅 Type        🏷 Category          │
+│  May 24, 2026      youtube       MLOps                 │
 │  ─────────────────────────────────────────────────────  │
 │  🔗 https://youtube.com/watch?v=abc123xyz              │
+│                                                         │
+│  Your Note                                              │
+│  ┌────────────────────────────────────────────────────┐ │
+│  │ Great overview of the MLOps lifecycle              │ │
+│  └────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────┘
 ```
 
 **Key elements:**
-- Large thumbnail with gradient placeholder fallback
-- Title + type icon + domain + action buttons (open original, delete)
-- AI-generated summary in a tinted/prominent box
-- Tag pills with tag icon
-- Metadata grid: Saved date, Content type, Emotional tone, Educational relevance
-- Original URL in a styled bar with link icon
+- Large thumbnail with platform-specific placeholder fallback
+- Title + type icon + domain + category badge + action buttons
+- Tag pills with relevant keywords
+- Description in a tinted box
+- Metadata grid: Saved date, Content type, Category
+- Original URL in a styled bar
+- Optional notes section
 
 ---
 
@@ -564,7 +470,7 @@ RootLayout
     ├── DashboardPage
     │   └── DashboardLayout
     │       ├── Navbar
-    │       │   ├── Logo (Archive)
+    │       │   ├── Logo (Content Archive)
     │       │   ├── Search icon → /search
     │       │   ├── Dashboard icon → /dashboard
     │       │   ├── Dark mode toggle
@@ -573,14 +479,14 @@ RootLayout
     │       │   ├── "Save Content" button
     │       │   ├── Nav items (Dashboard, Search, Timeline, Save New)
     │       │   └── Category quick-links
+    │       ├── FAB (floating save button)
     │       └── Main content
     │           ├── SearchBar
-    │           ├── StatsCard (×4)
+    │           ├── StatsCard (×3)
     │           ├── RecentSaves
     │           │   └── ContentCard[]
     │           ├── CategoryCards
     │           ├── TimelineWidget
-    │           ├── InsightsWidget
     │           └── CategoryPie
     │
     ├── NewContentPage
@@ -594,27 +500,30 @@ RootLayout
     ├── SearchPage
     │   └── DashboardLayout
     │       ├── SearchBar
-    │       ├── Mode chips
     │       └── SearchResults
     │           └── ResultCard[]
     │
     ├── ContentDetailPage
     │   └── DashboardLayout
     │       └── ContentDetail
-    │           ├── Thumbnail
-    │           ├── Title + Actions
-    │           ├── Summary box
+    │           ├── Thumbnail (with platform fallback)
+    │           ├── Title + Category badge + Actions
     │           ├── Tag pills
+    │           ├── Description
     │           ├── Metadata grid
-    │           └── URL bar
+    │           ├── URL bar
+    │           └── Notes section
     │
     ├── TimelinePage
     │   └── DashboardLayout
     │       └── Date groups
     │           └── ContentCard[]
     │
-    └── SignInPage (no layout)
-        └── Card with GitHub / Google buttons
+    ├── LoginPage (no layout)
+    │   └── Card with LoginForm
+    │
+    └── RegisterPage (no layout)
+        └── Card with RegisterForm
 ```
 
 ### 5.2 UI Components (shadcn/ui)
@@ -624,10 +533,9 @@ RootLayout
 | Button | `@/components/ui/button` | All actions |
 | Card | `@/components/ui/card` | Content cards, forms |
 | Input | `@/components/ui/input` | Search, URL input |
-| Badge | `@/components/ui/badge` | Category, status, tags |
+| Badge | `@/components/ui/badge` | Category, tags, status |
 | Avatar | `@/components/ui/avatar` | User menu |
 | Separator | `@/components/ui/separator` | Dividers |
-| Tabs | `@/components/ui/tabs` | Search type tabs |
 | Skeleton | `@/components/ui/skeleton` | Loading states |
 | Toast | `@/components/ui/toast` | Notifications |
 | DropdownMenu | `@/components/ui/dropdown-menu` | User menu |
@@ -657,96 +565,68 @@ RootLayout
    ▼
    ┌──────────────────┐
    │Metadata Extraction│
-   │OpenGraph · Title  │
+   │(oEmbed / OG tags) │
    └────────┬─────────┘
             │
             ▼
    ┌──────────────────┐
-   │ AI Categorization │
+   │Category Assignment│
+   │(keyword matching) │
    └────────┬─────────┘
             │
             ▼
    ┌──────────────┐
    │Tag Generation│
+   │(from title)  │
    └──────┬───────┘
            │
            ▼
-   ┌──────────────────┐
-   │Summary Generation│
-   └────────┬─────────┘
-            │
-            ▼
-   ┌───────────────────┐
-   │Embedding Generator│
-   └────────┬──────────┘
-            │
-            ▼
    ┌──────────────────┐
    │ PostgreSQL Store  │
    └────────┬─────────┘
             │
             ▼
    ┌──────────────────┐
-   │ Dashboard Update  │
-   │ (UI Refresh)     │
+   │  Redirect to     │
+   │ Content Detail   │
    └──────────────────┘
 ```
 
-### 6.2 Semantic Search Flow
+### 6.2 Search Flow
 
 ```
    ┌──────────────┐
    │ Enter Query  │
-   │ Natural lang │
    └──────┬───────┘
           │
           ▼
    ┌──────────────┐
-   │Search Parser │
+   │ Keyword Match │
+   │ (title, desc, │
+   │  category,    │
+   │  tags, notes) │
    └──────┬───────┘
           │
           ▼
    ┌──────────────┐
-   │ Embed Query  │◄────┐
-   └──────┬───────┘     │
-          │              │
-          ▼              │
-    ┌─────────┐          │
-   ┌┤ Search  │          │
-   ││ Type?   │          │
-   │└─────────┘          │
-   │ Semantic  │ Keyword │
-   ▼           ▼         │
-   ┌──────────┐          │
-   │  Vector   │          │
-   │  Search   │          │
-   └────┬─────┘          │
-        │                │
-        ▼                │
-   ┌──────────────┐      │
-   │Hybrid Ranking│      │
-   │ Rerank+score │      │
-   └──────┬───────┘      │
-          │              │
-          ▼              │
-   ┌──────────────┐      │
-   │   Results    │      │
-   │   Display    │      │
-   └──────────────┘      │
-                          │
-   ┌──────────────┐      │
-   │  Embeddings  │──────┘
-   │  (pgvector)  │
+   │ Category     │
+   │ Filter (opt) │
+   └──────┬───────┘
+          │
+          ▼
+   ┌──────────────┐
+   │   Results    │
+   │   Display    │
    └──────────────┘
 ```
 
 ### 6.3 User Journey
 
 ```
-[Paste Link] → [Processing] → [Categorized] → [Stored] → [Search Later] → [Retrieve]
-     │              │              │             │             │              │
- URL submitted    AI analyzes    Tags        Saved to DB   Semantic      View content
-                                 assigned                  query
+[Paste Link] → [Instant Save] → [Categorized] → [Tagged] → [Search Later] → [Retrieve]
+     │              │                │             │             │              │
+ URL submitted   Metadata        Category      Tags         Full-text      View details
+                 extracted       assigned      generated    search         with metadata
 ```
 
 ---
@@ -754,13 +634,13 @@ RootLayout
 ## 7. Folder Structure
 
 ```
-content-archive/
+smart-content-vault/
 │
 ├── .env                          # Environment variables
 ├── .env.example                  # Example env template
 ├── .gitignore
 ├── README.md
-├── docker-compose.yml            # Postgres + AI Service + Web
+├── docker-compose.yml            # PostgreSQL container (optional)
 ├── package.json                  # Root workspace
 ├── PROJECT_SPECIFICATION.md      # This document
 │
@@ -775,8 +655,11 @@ content-archive/
 │       │
 │       ├── prisma/
 │       │   ├── schema.prisma     # Database schema
-│       │   ├── seed.ts           # Demo data seeder
-│       │   └── dev.db            # SQLite dev database
+│       │   └── seed.ts           # Demo data seeder
+│       │
+│       ├── public/
+│       │   └── assets/
+│       │       └── placeholders/ # Platform SVGs (youtube, instagram, etc.)
 │       │
 │       └── src/
 │           ├── app/
@@ -786,46 +669,47 @@ content-archive/
 │           │   │
 │           │   ├── api/
 │           │   │   ├── auth/
-│           │   │   │   └── [...nextauth]/route.ts
+│           │   │   │   ├── login/route.ts
+│           │   │   │   ├── logout/route.ts
+│           │   │   │   ├── me/route.ts
+│           │   │   │   └── register/route.ts
 │           │   │   ├── content/
 │           │   │   │   ├── route.ts       # GET (list), POST (create)
 │           │   │   │   └── [id]/route.ts  # GET, DELETE, PATCH
 │           │   │   ├── insights/
 │           │   │   │   └── dashboard/route.ts  # Dashboard stats
 │           │   │   └── search/
-│           │   │       └── route.ts       # Hybrid search
+│           │   │       └── route.ts       # Keyword search
 │           │   │
-│           │   ├── auth/
-│           │   │   └── [...nextauth]/page.tsx  # Sign-in page
 │           │   ├── content/
 │           │   │   ├── [id]/page.tsx      # Content detail
 │           │   │   └── new/page.tsx       # Add content form
 │           │   ├── dashboard/page.tsx     # Main dashboard
+│           │   ├── login/page.tsx         # Login page
+│           │   ├── register/page.tsx      # Registration page
 │           │   ├── search/page.tsx        # Search page
 │           │   └── timeline/page.tsx      # Chronological view
 │           │
 │           ├── components/
 │           │   ├── content/
-│           │   │   ├── ContentCard.tsx    # Card with status badge
+│           │   │   ├── ContentCard.tsx    # Card with thumbnail, title, category, tags
 │           │   │   ├── ContentDetail.tsx  # Full detail view
-│           │   │   ├── ContentForm.tsx    # Save form with validation
-│           │   │   └── ContentList.tsx    # Paginated list
+│           │   │   └── ContentForm.tsx    # Save form with URL validation
 │           │   │
 │           │   ├── dashboard/
 │           │   │   ├── CategoryCards.tsx  # Grid with progress bars
 │           │   │   ├── CategoryPie.tsx    # Donut chart (recharts)
-│           │   │   ├── InsightsWidget.tsx # AI insight cards
 │           │   │   ├── RecentSaves.tsx    # Recent items list
 │           │   │   ├── StatsCard.tsx      # Metric card
 │           │   │   └── TimelineWidget.tsx # Timeline list
 │           │   │
 │           │   ├── layout/
-│           │   │   ├── DashboardLayout.tsx # Provider wrapper
+│           │   │   ├── DashboardLayout.tsx # Provider wrapper + FAB
 │           │   │   ├── Navbar.tsx         # Top navigation bar
 │           │   │   └── Sidebar.tsx        # Left sidebar
 │           │   │
 │           │   ├── search/
-│           │   │   ├── SearchBar.tsx      # Search input with Ctrl+K
+│           │   │   ├── SearchBar.tsx      # Search input
 │           │   │   └── SearchResults.tsx  # Result cards with score
 │           │   │
 │           │   └── ui/                   # shadcn/ui primitives
@@ -837,7 +721,6 @@ content-archive/
 │           │       ├── input.tsx
 │           │       ├── separator.tsx
 │           │       ├── skeleton.tsx
-│           │       ├── tabs.tsx
 │           │       ├── toast.tsx
 │           │       └── toaster.tsx
 │           │
@@ -848,8 +731,12 @@ content-archive/
 │           │   └── useSearch.ts           # Search results
 │           │
 │           └── lib/
-│               ├── auth.ts               # NextAuth v5 config
+│               ├── auth.ts               # JWT auth helpers
+│               ├── categorizer.ts         # Keyword-based category detection
 │               ├── prisma.ts             # Prisma client singleton
+│               ├── processing.ts         # Metadata extraction + categorization + tags
+│               ├── tag-generator.ts       # Tag generation from title
+│               ├── thumbnail.ts          # Thumbnail fallback hierarchy
 │               └── utils.ts              # cn(), formatRelativeTime(),
 │                                          # formatDate(), getDomain(), etc.
 │
@@ -862,39 +749,8 @@ content-archive/
 │           ├── types.ts           # SavedContent, SearchResult, DashboardStats...
 │           └── constants.ts       # CATEGORIES, CATEGORY_META, CONTENT_TYPE_*...
 │
-├── services/
-│   └── ai/                       # FastAPI AI microservice
-│       ├── .env.example
-│       ├── Dockerfile
-│       ├── requirements.txt
-│       └── src/
-│           ├── __init__.py
-│           ├── main.py           # FastAPI app + CORS + lifespan
-│           ├── config.py         # Settings via pydantic-settings
-│           │
-│           ├── db/
-│           │   ├── __init__.py
-│           │   └── client.py     # psycopg2 + pgvector operations
-│           │
-│           ├── models/
-│           │   ├── __init__.py
-│           │   └── schemas.py    # Pydantic request/response models
-│           │
-│           ├── pipeline/
-│           │   ├── __init__.py
-│           │   ├── classifier.py # AI + keyword classification
-│           │   ├── embedder.py   # sentence-transformers / OpenAI
-│           │   ├── extractor.py  # YouTube, Instagram, Twitter, web
-│           │   └── summarizer.py # AI + extractive summarization
-│           │
-│           └── routers/
-│               ├── __init__.py
-│               ├── content.py    # /api/ai/process, /api/ai/embed
-│               └── search.py     # /api/search semantic
-│
 └── scripts/
-    ├── dev.sh                    # Development startup script
-    └── setup.sh                  # Initial project setup
+    └── auto-commit.ps1            # Dev auto-commit watcher (optional)
 ```
 
 ---
@@ -908,11 +764,10 @@ content-archive/
 | **Frontend** | Next.js 14 (App Router) | SSR/SSG, file-based routing, React Server Components, excellent DX |
 | **Language** | TypeScript | Type safety, better refactoring, self-documenting code |
 | **Styling** | TailwindCSS + shadcn/ui | Utility-first, customizable, accessible primitives, dark mode built-in |
-| **Auth** | NextAuth v5 | Prisma adapter, GitHub + Google OAuth, session management |
-| **ORM** | Prisma | Type-safe queries, migrations, schema-first, SQLite for dev |
-| **Database** | PostgreSQL + pgvector | Production-grade, vector similarity search via pgvector extension |
-| **AI Service** | FastAPI (Python) | Async support, Pydantic validation, OpenAI SDK + sentence-transformers |
-| **Search** | Hybrid (keyword + semantic) | pgvector for embeddings + full-text search for keywords |
+| **Auth** | Custom JWT (jose + bcryptjs) | Simple, no external dependencies, HttpOnly cookies |
+| **ORM** | Prisma | Type-safe queries, migrations, schema-first |
+| **Database** | PostgreSQL | Production-grade relational database |
+| **Search** | Keyword / full-text | Matches across title, description, category, tags, notes |
 | **Data Fetching** | SWR | Stale-while-revalidate, caching, optimistic updates |
 | **Charts** | Recharts | React-native, composable, responsive |
 
@@ -920,13 +775,13 @@ content-archive/
 
 | # | Decision | Rationale |
 |---|----------|-----------|
-| 1 | **Monorepo with npm workspaces** | Shared types between web + AI service, single `npm install`, coordinated versioning |
-| 2 | **Separate AI microservice** | Python ecosystem for ML (sentence-transformers, OpenAI), isolated scaling, language-appropriate |
-| 3 | **Prisma for dev/prod parity** | SQLite in dev (zero setup), PostgreSQL in prod — same schema, same queries |
-| 4 | **SWR over React Query** | Lighter weight, built-in revalidation, good enough for this use case |
-| 5 | **pgvector over Pinecone/Weaviate** | Self-hosted, no external dependency, single database, good enough for scale |
-| 6 | **OpenAI with keyword fallback** | AI provides better quality; keyword fallback ensures zero-downtime operation |
-| 7 | **Glassmorphism design** | Modern SaaS aesthetic, works well with dark theme, matches wireframe specs |
+| 1 | **Monorepo with npm workspaces** | Shared types, single `npm install`, coordinated versioning |
+| 2 | **Custom JWT over NextAuth** | Simpler setup, no OAuth provider dependencies, full control |
+| 3 | **Keyword-based categorization** | Fast, local, no API calls, easy to maintain and extend |
+| 4 | **Platform placeholder SVGs** | No broken images, meaningful fallbacks, lightweight |
+| 5 | **SWR over React Query** | Lighter weight, built-in revalidation, good enough for this use case |
+| 6 | **Glassmorphism design** | Modern SaaS aesthetic, works well with dark theme |
+| 7 | **FAB for global save** | Always accessible, reduces friction for content capture |
 
 ### 8.3 Design System
 
@@ -960,18 +815,18 @@ content-archive/
 
 ### 8.4 Performance Considerations
 
-- **AI processing is async**: User gets immediate response, AI pipeline runs in background
+- **Instant saves**: No background queues; metadata extraction and categorization complete synchronously
 - **SWR caching**: Dashboard data cached and revalidated automatically
 - **Prisma connection pooling**: Singleton client prevents connection exhaustion
-- **pgvector indexing**: IVFFlat index for approximate nearest neighbor search
 - **Lazy loading**: Pages are dynamically rendered only when requested
+- **Static placeholder assets**: Platform SVGs are small, cached, and never fail to load
 
 ### 8.5 Security
 
-- **Authentication**: NextAuth v5 with OAuth providers (GitHub, Google)
+- **Authentication**: Custom JWT with HttpOnly cookies, 7-day expiration
 - **Authorization**: Server-side session checks on all API routes
 - **Input validation**: Zod schemas on all API inputs
-- **CORS**: AI service allows all origins (internal network only)
+- **Password hashing**: bcryptjs with 12 salt rounds
 - **Environment variables**: Secrets never committed, `.env.example` provides template
 
 ### 8.6 Development Workflow
@@ -984,11 +839,10 @@ npm run prisma:generate
 npm run prisma:push
 npm run prisma:seed
 
-# Run (two terminals)
-cd services/ai && uvicorn src.main:app --reload --port 8000
-npm run dev                    # :3000
+# Run
+npm run dev  # :3000
 
-# Docker
+# Docker (PostgreSQL only)
 docker-compose up -d
 ```
 
@@ -1005,51 +859,35 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ### A.2 Environment Variables (.env)
 | Variable | Value | Notes |
 |----------|-------|-------|
-| `DATABASE_URL` | `file:./dev.db` | SQLite for local dev |
-| `AUTH_SECRET` | *(generate, see A.1)* | NextAuth JWT encryption |
+| `DATABASE_URL` | PostgreSQL connection string | Required |
+| `AUTH_SECRET` | *(generate, see A.1)* | JWT signing secret (32+ chars) |
 | `NEXTAUTH_URL` | `http://localhost:3000` | App base URL |
-| `GITHUB_CLIENT_ID` | *(empty)* | Set for GitHub OAuth |
-| `GITHUB_CLIENT_SECRET` | *(empty)* | Set for GitHub OAuth |
-| `GOOGLE_CLIENT_ID` | *(empty)* | Set for Google OAuth |
-| `GOOGLE_CLIENT_SECRET` | *(empty)* | Set for Google OAuth |
-| `NVIDIA_API_KEY` | *(empty)* | NVIDIA AI inference API key |
-| `NVIDIA_MODEL` | `llama-4-maverick-17b-128e-instruct` | NVIDIA model name |
 
-### A.3 AI Provider Architecture
-- **Primary**: `NvidiaProvider` — sends extracted content to NVIDIA llama-4-maverick for structured JSON (summary, category, tags, takeaways, tone)
-- **Fallback**: `KeywordProvider` — keyword-based classification and extractive summarization (zero API calls, always works)
-- **Fallback chain**: `processContentInline()` tries NvidiaProvider first; on any failure (missing key, network error, invalid response, timeout), automatically falls back to KeywordProvider
-- **Content saving never fails**: AI processing runs async and non-blocking; failures are logged, results are best-effort
+### A.3 Auth Implementation Details
+- **Strategy**: JWT with `jose` library (HS256 algorithm)
+- **Cookies**: HttpOnly, Secure (prod), SameSite=Lax
+- **Expiration**: 7 days
+- **Session lookup**: Middleware reads session cookie on every request → verifies JWT → loads user from DB
+- **API Routes**:
+  - `POST /api/auth/register` — Create account with username + password
+  - `POST /api/auth/login` — Authenticate, set session cookie
+  - `POST /api/auth/logout` — Clear session cookie
+  - `GET /api/auth/me` — Current user info
 
-### A.4 Auth Implementation Details
-- **Strategy**: JWT (required by Credentials provider with PrismaAdapter)
-- **Session config**: `session: { strategy: "jwt" }` in NextAuth config
-- **Session callback**: Returns `session.user.id` from `token.sub`
-- **JWT callback**: Persists `user.id` into `token.sub` on sign-in
-- **Providers**:
-  - GitHub OAuth (conditional — only enabled when env vars are set)
-  - Google OAuth (conditional — only enabled when env vars are set)
-  - Demo Credentials (always enabled — finds or creates user by email `demo@contentarchive.dev`)
+### A.4 Content Organization
+- **Category Assignment**: `categorizer.ts` matches title + domain against 20 keyword-defined categories
+- **Tag Generation**: `tag-generator.ts` extracts significant words from title, removes stop words, deduplicates, caps at 5
+- **Tag Fallback**: If no keywords match, uses the domain hostname as a single tag
 
-### A.4 Deviations from Spec
-| # | Deviation | Reason |
-|---|-----------|--------|
-| 1 | **SQLite instead of PostgreSQL** | Zero setup for local dev; schema is identical, swap to PostgreSQL in prod |
-| 2 | **Inline JS processing as primary fallback** | Python AI service requires separate setup; inline JS works out of the box |
-| 3 | `**.env excluded from git** | Security best practice; refer to this appendix for values |
+### A.5 Thumbnail Fallback Hierarchy
 
-### A.5 New Fields
-| Field | Type | Stored as | Description |
-|-------|------|-----------|-------------|
-| `takeaways` | `string[]` | JSON string in `SavedContent.takeaways` | Key takeaway bullet points from content analysis |
+1. OpenGraph image (`og:image`) from HTML metadata
+2. YouTube thumbnail (via oEmbed or `img.youtube.com`)
+3. Google favicon (`s2/favicons`)
+4. Platform-specific placeholder SVG (7 variants)
 
-### A.6 Deviations from Spec
-| # | Deviation | Reason |
-|---|-----------|--------|
-| 1 | **SQLite instead of PostgreSQL** | Zero setup for local dev; schema is identical, swap to PostgreSQL in prod |
-| 2 | **Inline JS processing as primary fallback** | Python AI service requires separate setup; inline JS works out of the box |
-| 3 | `**.env excluded from git** | Security best practice; refer to this appendix for values |
+Placeholders never produce broken image icons.
 
 ---
 
-*End of Project Specification — Smart Content Vault v1.0.0*
+*End of Project Specification — Smart Content Vault v2.0.0*

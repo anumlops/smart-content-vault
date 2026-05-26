@@ -1,73 +1,59 @@
 # Progress Tracker
 
 ## Goal
-Make the Smart Content Vault app runnable end-to-end with proper auth, content ingestion, HTML entity handling, and no runtime errors.
+Build Smart Content Vault into a fast, reliable personal content bookmarking and knowledge organization platform. No AI processing — just instant saves, automatic organization, and easy retrieval.
 
 ## Constraints
-- Do not redesign, change architecture, or alter schema unless critical bug.
-- Do not remove or bypass authentication.
-- Treat specification docs as approved requirements.
-- Do not start/stop dev servers — user manages that externally.
+- Do not call any AI provider or processing service.
+- No background processing queues; saves complete immediately.
+- Mobile responsive at 375px+.
+- All documentation must accurately reflect current capabilities.
 
 ## Key Decisions
-- JWT session strategy chosen over database sessions because Credentials provider requires it with PrismaAdapter.
-- Inline JS processing in `processing.ts` serves as fallback when Python AI service is not running — enables fully standalone operation.
-- Demo Credentials provider enables development/testing without configuring GitHub/Google OAuth apps.
-- HTML entity decoding applied both at extraction time (processing.ts) and at render time (React components) to handle both new and existing DB content.
-- PROJECT_SPECIFICATION.md tracks all specs including AUTH_SECRET for reference.
+- JWT session strategy with jose + bcryptjs for auth.
+- Content extraction uses oEmbed (YouTube) + `<title>`/`og:title` HTML parsing.
+- Category and tag assignment done locally via keyword matching in `categorizer.ts`.
+- No AI providers, no semantic search by default, no summaries.
+- FAB button for global save access on all authenticated pages.
 
 ## Status
 
 ### Completed
-- [x] Cloned repo, read all docs (PROJECT_SPECIFICATION.md, README, schema, wireframes).
-- [x] Installed npm dependencies, generated Prisma client, pushed SQLite schema, seeded demo data.
-- [x] Created `apps/web/src/lib/processing.ts` — JS inline content processing (metadata extraction, keyword classification, extractive summarization).
-- [x] Updated `apps/web/src/app/api/content/route.ts` — processContent() falls back from Python AI service to inline JS when AI service unavailable.
-- [x] Fixed NextAuth v5 configuration:
-  - Added `AUTH_SECRET` and `NEXTAUTH_URL` to `apps/web/.env`.
-  - Set `session: { strategy: "jwt" }` (required for credentials provider with PrismaAdapter).
-  - Changed session callback to use `token.sub` for user ID.
-  - Added JWT callback to persist user ID.
-  - Made GitHub/Google OAuth providers conditional on env vars being set.
-  - Added "demo" Credentials provider (finds or creates user by email).
-- [x] Created `apps/web/src/app/auth/[...nextauth]/SignInForm.tsx` — client component using `signIn` from `next-auth/react` for credentials login.
-- [x] Split sign-in page into server component (OAuth buttons) + client component (demo form).
-- [x] Fixed `formatDate()` and `formatRelativeTime()` in `lib/utils.ts` — now handle undefined, null, invalid dates (return "Unknown date").
-- [x] Saved AI pipeline explanation as `docs/AI_PIPELINE.md`.
-- [x] Added `decodeHtmlEntities()` to `lib/utils.ts` — handles numeric, hex, and named HTML entities.
-- [x] Applied decoding in `processing.ts` after extracting title, description, text.
-- [x] Applied decoding in `ContentCard.tsx` for title, description, summary renders.
-- [x] Applied decoding in `ContentDetail.tsx` for title, summary, note renders.
-- [x] Built successfully — `✓ Compiled successfully` with no type errors.
-- [x] Created PROJECT_SPECIFICATION.md with full project spec including AUTH_SECRET.
-- [x] Created PROGRESS.md to track all changes.
-- [x] Created auto-commit hook for automatic git commits on changes.
-- [x] Pushed all changes to GitHub remote.
+- [x] JWT authentication with register/login/logout flow.
+- [x] Content saving with instant metadata extraction.
+- [x] oEmbed integration for YouTube title + thumbnail.
+- [x] HTML `<title>` and `og:title` extraction for other URLs.
+- [x] Domain-based title fallback.
+- [x] Category system with 20 keyword-driven categories (`categorizer.ts`).
+- [x] Auto tag generation from title keywords (`tag-generator.ts`).
+- [x] Thumbnail fallback hierarchy with platform-specific placeholder SVGs.
+- [x] Floating FAB save button on all authenticated pages.
+- [x] ContentCard shows: thumbnail, title, category badge, tags, domain, date.
+- [x] ContentDetail shows: thumbnail, title, description, category, tags, metadata.
+- [x] Timeline view with chronological grouping.
+- [x] Search with keyword matching across title, description, category, tags, notes.
+- [x] Dashboard with stats, recent saves, category cards, timeline widget.
+- [x] Responsive design at 375px+.
+- [x] Dark mode glassmorphism UI.
+- [x] Build passes with zero TypeScript errors.
+- [x] All changes committed and pushed to `origin/main`.
 
 ### In Progress
 - (none)
 
 ### Latest Changes
-- [x] Restored original PROJECT_SPECIFICATION.md (997-line comprehensive spec) and added Appendix A with auth secret, env vars, auth implementation details, and deviations from spec.
-- [x] Created PROGRESS.md for ongoing change tracking.
-- [x] Created apps/web/.env with working AUTH_SECRET and config.
-- [x] Created scripts/auto-commit.ps1 — file watcher that auto-commits changes.
-- [x] All changes staged, committed, and pushed to GitHub.
-- [x] Improved text extraction pipeline in `processing.ts`:
-  - **Decode HTML entities** before truncation (avoids cutting entities in half)
-  - **Remove duplicate text** via fuzzy matching (Levenshtein distance, 85% threshold)
-  - **Remove social-media boilerplate** — 28 regex patterns (subscribe, share, copyright, etc.)
-  - **Normalize whitespace** — collapse spaces, trim lines, dedup empty lines
-  - **Extract meaningful content** — prioritized extraction from JSON-LD, `<article>`, `<main>`, content divs, then `<p>`/headings as fallback
-- [x] **Integrated NVIDIA llama-4-maverick as AI provider**:
-  - Created `apps/web/src/lib/providers/` with `provider.ts` (base interface), `nvidia.ts` (NVIDIA API integration), `keyword.ts` (keyword fallback), `index.ts` (exports)
-  - `NvidiaProvider`: sends cleaned content to NVIDIA chat completions API, requests structured JSON (summary, category, tags, takeaways, tone), parses code-fenced or bare JSON responses
-  - `KeywordProvider`: refactored from old `classifyContent` + `generateSummary` — keyword scoring for category/tags, regex tone detection, extractive summarization
-  - `runWithFallback()`: tries NvidiaProvider first; on any failure (missing key, network error, invalid JSON, timeout) automatically falls back to KeywordProvider
-  - Added `takeaways` field to Prisma schema (stored as JSON string) and shared `SavedContent` type
-  - Updated `ContentDetail.tsx` — displays Key Takeaways section with amber bullet list between summary and tags
-  - Content saving never fails due to AI processing (async, non-blocking, best-effort results)
-  - Updated `.env`, `.env.example`, `PROJECT_SPECIFICATION.md` with NVIDIA vars (placeholder values only)
+- [x] Removed all AI provider code (NVIDIA, keyword fallback, Python AI service references).
+- [x] Rewrote `processing.ts` — stripped AI, kept oEmbed + basic title extraction.
+- [x] Rewrote POST `/api/content` — inline metadata extraction, immediate save.
+- [x] Rewrote ContentCard, ContentDetail, ContentForm — removed AI badges, summaries, tags display.
+- [x] Added floating FAB to DashboardLayout.
+- [x] Added category system in `categorizer.ts` (20 categories, keyword-based).
+- [x] Added tag generator in `tag-generator.ts` (up to 5 tags from title).
+- [x] Added thumbnail fallback hierarchy with 7 platform SVGs.
+- [x] Updated constants.ts with new category list and meta.
+- [x] Rewrote all documentation (README, PROJECT_SPECIFICATION, DEPLOYMENT).
+- [x] Deleted `docs/AI_PIPELINE.md` (no longer applicable).
+- [x] Removed unused AI provider files.
 
 ### Blocked
 - (none)
