@@ -3,13 +3,11 @@
 import { useParams, useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { ContentDetail } from "@/components/content/ContentDetail";
-import { ContentCard } from "@/components/content/ContentCard";
 import { useContent, useDeleteContent } from "@/hooks/useContent";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import type { SavedContent } from "@shared/index";
 
 export default function ContentPage() {
   const params = useParams();
@@ -31,13 +29,13 @@ export default function ContentPage() {
   if (isLoading) {
     return (
       <DashboardLayout>
-        <div className="max-w-4xl mx-auto space-y-6">
-          <Skeleton className="h-10 w-24" />
-          <Skeleton className="aspect-video rounded-xl" />
+        <div className="space-y-5 w-full max-w-3xl">
+          <Skeleton className="h-8 w-16" />
+          <Skeleton className="aspect-video rounded-lg" />
           <div className="space-y-3">
-            <Skeleton className="h-8 w-3/4" />
+            <Skeleton className="h-6 w-3/4" />
             <Skeleton className="h-4 w-1/2" />
-            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-16 w-full" />
           </div>
         </div>
       </DashboardLayout>
@@ -47,8 +45,8 @@ export default function ContentPage() {
   if (!content) {
     return (
       <DashboardLayout>
-        <div className="max-w-4xl mx-auto text-center py-16">
-          <h2 className="text-lg md:text-xl font-semibold">Content not found</h2>
+        <div className="text-center py-16">
+          <h2 className="text-base font-semibold">Content not found</h2>
           <Button variant="link" onClick={() => router.push("/dashboard")}>
             Back to dashboard
           </Button>
@@ -59,8 +57,8 @@ export default function ContentPage() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-4xl mx-auto space-y-6">
-        <Button variant="ghost" onClick={() => router.back()} className="gap-2">
+      <div className="space-y-5 w-full max-w-full md:max-w-3xl">
+        <Button variant="ghost" onClick={() => router.back()} className="gap-1.5 h-8 text-sm -ml-2">
           <ArrowLeft className="h-4 w-4" />
           Back
         </Button>

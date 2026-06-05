@@ -6,12 +6,10 @@ import { ContentForm } from "@/components/content/ContentForm";
 export default function NewContentPage() {
   return (
     <DashboardLayout>
-      <div className="max-w-2xl mx-auto space-y-6">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Save Content</h1>
-          <p className="text-muted-foreground">
-            Paste a link and save it instantly
-          </p>
+      <div className="w-full max-w-full md:max-w-xl">
+        <div className="page-header">
+          <h1 className="page-title">Save Content</h1>
+          <p className="page-subtitle">Paste a link and save it instantly</p>
         </div>
         <ContentForm />
       </div>

@@ -64,6 +64,15 @@ export const CONTENT_TYPE_ICONS: Record<string, string> = {
   website: "Globe",
 };
 
+export const CONTENT_TYPE_STYLES: Record<string, { color: string; bg: string }> = {
+  youtube: { color: "text-red-500", bg: "bg-red-500/10" },
+  instagram: { color: "text-pink-500", bg: "bg-pink-500/10" },
+  twitter: { color: "text-blue-400", bg: "bg-blue-500/10" },
+  article: { color: "text-emerald-500", bg: "bg-emerald-500/10" },
+  blog: { color: "text-orange-500", bg: "bg-orange-500/10" },
+  website: { color: "text-violet-500", bg: "bg-violet-500/10" },
+};
+
 export const SEARCH_LIMITS = {
   DEFAULT: 20,
   MAX: 100,

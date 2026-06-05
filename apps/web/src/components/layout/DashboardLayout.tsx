@@ -15,21 +15,21 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background overflow-x-hidden">
         <Navbar />
         <Sidebar />
-        <main className="lg:pl-64 pt-14 pb-16 lg:pb-6">
-          <div className="container mx-auto p-4 md:p-6 lg:p-8 max-w-7xl">
+        <main className="lg:pl-64 pt-14 pb-20 lg:pb-6 min-h-screen max-w-full">
+          <div className="page-container max-w-full overflow-hidden">
             {children}
           </div>
         </main>
         <div className="hidden lg:block">
           <Link
             href="/content/new"
-            className="fixed bottom-6 right-6 z-50 flex items-center gap-2 h-12 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors px-6"
+            className="fixed bottom-6 right-6 z-50 flex items-center gap-2 h-11 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors px-5 text-sm font-medium"
           >
-            <Plus className="h-5 w-5" />
-            <span className="text-sm font-medium">Save Link</span>
+            <Plus className="h-4 w-4" />
+            Save Link
           </Link>
         </div>
         <BottomNav />

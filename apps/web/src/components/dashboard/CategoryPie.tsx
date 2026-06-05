@@ -5,7 +5,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { PieChartIcon } from "lucide-react";
 
 const COLORS = [
-  "hsl(220, 70%, 50%)",
+  "hsl(var(--primary))",
   "hsl(280, 70%, 50%)",
   "hsl(340, 70%, 50%)",
   "hsl(40, 90%, 50%)",
@@ -28,10 +28,10 @@ export function CategoryPie({ data }: CategoryPieProps) {
 
   if (!chartData.length) {
     return (
-      <Card className="glass">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <PieChartIcon className="h-5 w-5 text-primary" />
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+            <PieChartIcon className="h-4 w-4 text-primary" />
             Categories
           </CardTitle>
         </CardHeader>
@@ -43,49 +43,52 @@ export function CategoryPie({ data }: CategoryPieProps) {
   }
 
   return (
-    <Card className="glass">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <PieChartIcon className="h-5 w-5 text-primary" />
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+          <PieChartIcon className="h-4 w-4 text-primary" />
           Categories
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="h-[200px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={chartData}
-                cx="50%"
-                cy="50%"
-                innerRadius={50}
-                outerRadius={80}
-                paddingAngle={2}
-                dataKey="value"
-              >
-                {chartData.map((_, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{
-                  background: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "8px",
-                }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
+      <CardContent className="p-0">
+        <div className="px-5 pb-2">
+          <div className="h-[180px] md:h-[200px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={chartData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={45}
+                  outerRadius={70}
+                  paddingAngle={2}
+                  dataKey="value"
+                >
+                  {chartData.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    background: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "8px",
+                    fontSize: "13px",
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2 mt-4">
+        <div className="flex flex-wrap gap-1.5 px-5 pb-4">
           {chartData.slice(0, 5).map((entry, index) => (
-            <div key={entry.name} className="flex items-center gap-1.5 text-xs">
+            <div key={entry.name} className="flex items-center gap-1.5 text-[11px] min-w-0">
               <div
-                className="h-2 w-2 rounded-full"
+                className="h-2 w-2 rounded-full shrink-0"
                 style={{ backgroundColor: COLORS[index % COLORS.length] }}
               />
-              <span>{entry.name}</span>
-              <span className="text-muted-foreground">({entry.value})</span>
+              <span className="truncate min-w-0 max-w-[80px]">{entry.name}</span>
+              <span className="text-muted-foreground tabular-nums shrink-0">{entry.value}</span>
             </div>
           ))}
         </div>

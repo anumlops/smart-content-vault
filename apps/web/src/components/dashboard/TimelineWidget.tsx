@@ -27,8 +27,8 @@ export function TimelineWidget({ items }: TimelineWidgetProps) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Timeline</h3>
-        <Link href="/timeline" className="text-xs text-primary hover:underline">
+        <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Timeline</h3>
+        <Link href="/timeline" className="text-xs text-primary font-medium hover:underline">
           View all
         </Link>
       </div>
@@ -36,8 +36,8 @@ export function TimelineWidget({ items }: TimelineWidgetProps) {
         {recent.map((item, i) => {
           const catMeta = item.category ? CATEGORY_META[item.category] : null;
           return (
-            <Link key={item.id} href={`/content/${item.id}`}>
-              <div className="group relative flex gap-3 pb-4 last:pb-0 cursor-pointer">
+            <Link key={item.id} href={`/content/${item.id}`} className="block">
+              <div className="group relative flex gap-3 pb-3.5 last:pb-0 cursor-pointer">
                 {i < recent.length - 1 && (
                   <div className="absolute left-[7px] top-[18px] w-px h-[calc(100%-8px)] bg-border" />
                 )}
@@ -46,10 +46,10 @@ export function TimelineWidget({ items }: TimelineWidgetProps) {
                   dotColors[i % dotColors.length]
                 )} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors truncate">
+                  <p className="text-sm font-medium text-foreground truncate">
                     {item.title ?? "Untitled"}
                   </p>
-                  <div className="flex items-center gap-1.5 mt-0.5">
+                  <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                     <span className="text-xs text-muted-foreground">{formatRelativeTime(item.createdAt)}</span>
                     <span className="text-muted-foreground/40">&middot;</span>
                     <span className="text-xs capitalize text-muted-foreground">{item.contentType}</span>

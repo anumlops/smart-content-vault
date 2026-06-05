@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { LogIn, Loader2 } from "lucide-react";
+import { LogIn, Loader2, AlertCircle } from "lucide-react";
 
 export function LoginForm() {
   const router = useRouter();
@@ -42,34 +42,48 @@ export function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
+      <div className="space-y-1.5">
+        <label htmlFor="login-username" className="text-sm font-medium text-foreground">
+          Username
+        </label>
         <Input
+          id="login-username"
           name="username"
           type="text"
-          placeholder="Username"
+          placeholder="Enter your username\u2026"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           disabled={loading}
           autoComplete="username"
+          spellCheck={false}
         />
       </div>
-      <div className="space-y-2">
+      <div className="space-y-1.5">
+        <label htmlFor="login-password" className="text-sm font-medium text-foreground">
+          Password
+        </label>
         <Input
+          id="login-password"
           name="password"
           type="password"
-          placeholder="Password"
+          placeholder="Enter your password\u2026"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           disabled={loading}
           autoComplete="current-password"
         />
       </div>
-      {error && <p className="text-sm text-red-500 text-center">{error}</p>}
-      <Button type="submit" className="w-full gap-2" disabled={loading}>
+      {error && (
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive" role="alert" aria-live="polite">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+      <Button type="submit" className="w-full gap-2 h-10" disabled={loading}>
         {loading ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
-            Signing in...
+            Signing in\u2026
           </>
         ) : (
           <>

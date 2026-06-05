@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
 import { Play, Camera, MessageCircle, FileText, Globe, Clock } from "lucide-react";
-import { formatRelativeTime, truncate } from "@/lib/utils";
+import { formatRelativeTime } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { CONTENT_TYPE_STYLES } from "@shared/index";
 import type { SearchResult } from "@shared/index";
 
 const typeIcons: Record<string, React.ReactNode> = {
@@ -26,9 +26,9 @@ interface SearchResultsProps {
 export function SearchResults({ results, query, total, loading }: SearchResultsProps) {
   if (loading) {
     return (
-      <div className="space-y-3 mt-6">
+      <div className="space-y-2 mt-5">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="h-24 rounded-xl bg-muted/50 animate-pulse" />
+          <div key={i} className="h-20 rounded-lg bg-muted animate-pulse" />
         ))}
       </div>
     );
@@ -37,9 +37,11 @@ export function SearchResults({ results, query, total, loading }: SearchResultsP
   if (!results.length) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="text-4xl mb-4 opacity-50">&#128269;</div>
-        <h3 className="text-lg font-semibold mb-1">No results found</h3>
-        <p className="text-sm text-muted-foreground max-w-md">
+        <div className="h-12 w-12 rounded-xl bg-muted flex items-center justify-center mb-4">
+          <Globe className="h-5 w-5 text-muted-foreground" />
+        </div>
+        <h3 className="text-base font-semibold mb-1">No results found</h3>
+        <p className="text-sm text-muted-foreground max-w-xs mx-auto leading-relaxed">
           No matches for &ldquo;{query}&rdquo;. Try different keywords or browse your categories.
         </p>
       </div>
@@ -47,38 +49,47 @@ export function SearchResults({ results, query, total, loading }: SearchResultsP
   }
 
   return (
-    <div className="space-y-4 mt-6">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          Found {total ?? results.length} result{total !== 1 && "s"} for &ldquo;{query}&rdquo;
-        </p>
-      </div>
+    <div className="space-y-3 mt-5 w-full">
+      <p className="text-sm text-muted-foreground">
+        Found {total ?? results.length} result{total !== 1 && "s"} for &ldquo;{query}&rdquo;
+      </p>
 
-      <div className="space-y-2">
+      <div className="w-full divide-y divide-border/50">
         {results.map((result) => {
           const c = result.content;
+          const typeStyle = CONTENT_TYPE_STYLES[c.contentType];
           return (
-            <Link key={c.id} href={`/content/${c.id}`}>
-              <div className="group flex gap-3 p-4 rounded-xl glass-card-hover">
-                <div className="w-[72px] h-[54px] shrink-0 rounded-lg bg-muted flex items-center justify-center text-muted-foreground/40 overflow-hidden border border-border/30">
+            <Link key={c.id} href={`/content/${c.id}`} className="block w-full active:bg-accent/50 transition-colors -mx-3 px-3 first:-mt-2">
+              <div className="flex gap-3 py-3">
+                <div className={cn(
+                  "w-[68px] h-[52px] shrink-0 rounded-lg flex items-center justify-center overflow-hidden",
+                  typeStyle?.bg ?? "bg-muted"
+                )}>
                   {c.thumbnailUrl ? (
-                    <img src={c.thumbnailUrl} alt="" className="object-cover w-full h-full" />
+                    <img
+                      src={c.thumbnailUrl}
+                      alt=""
+                      className="object-cover w-full h-full"
+                      loading="lazy"
+                    />
                   ) : (
-                    typeIcons[c.contentType] ?? <Globe className="h-5 w-5" />
+                    <div className="text-muted-foreground/40">
+                      {typeIcons[c.contentType] ?? <Globe className="h-5 w-5" />}
+                    </div>
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors truncate">
+                  <p className="text-sm font-semibold text-foreground truncate">
                     {c.title ?? "Untitled"}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1 leading-relaxed">
                     {c.description ?? "No description available"}
                   </p>
-                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                     {c.category && (
-                      <Badge variant="secondary" className="text-[10px] h-5 px-1.5 bg-primary/10 text-primary border-primary/20">
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-primary/10 text-primary">
                         {c.category}
-                      </Badge>
+                      </span>
                     )}
                     <span className="text-[10px] text-muted-foreground flex items-center gap-1 capitalize">
                       {typeIcons[c.contentType]}
@@ -90,9 +101,9 @@ export function SearchResults({ results, query, total, loading }: SearchResultsP
                     </span>
                   </div>
                 </div>
-                <div className="flex flex-col items-center justify-center shrink-0 ml-2">
-                  <span className="text-lg font-bold text-primary">{Math.round(result.score * 100)}</span>
-                  <span className="text-[9px] text-muted-foreground uppercase tracking-wider">Match</span>
+                <div className="flex flex-col items-center justify-center shrink-0 ml-1 min-w-[32px]">
+                  <span className="text-base font-bold text-primary tabular-nums">{Math.round(result.score * 100)}</span>
+                  <span className="text-[8px] text-muted-foreground uppercase tracking-wider">Match</span>
                 </div>
               </div>
             </Link>

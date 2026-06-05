@@ -1,7 +1,6 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
   ExternalLink,
@@ -15,7 +14,7 @@ import {
   MessageCircle,
   FileText,
 } from "lucide-react";
-import { formatDate, getDomain, decodeHtmlEntities } from "@/lib/utils";
+import { formatDateShort, getDomain, decodeHtmlEntities } from "@/lib/utils";
 import { getPlaceholderPath } from "@/lib/thumbnail";
 import { CATEGORY_META } from "@shared/index";
 import type { SavedContent } from "@shared/index";
@@ -41,10 +40,9 @@ export function ContentDetail({ content, onDelete }: ContentDetailProps) {
   const hasThumb = content.thumbnailUrl;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 w-full">
       <div className={cn(
-        "relative w-full h-48 md:h-64 rounded-xl overflow-hidden bg-gradient-to-br from-primary/5 to-primary/10 border border-border/50 flex items-center justify-center",
-        hasThumb && "border-0"
+        "relative w-full aspect-video md:h-64 rounded-lg overflow-hidden bg-muted flex items-center justify-center",
       )}>
         {hasThumb ? (
           <img
@@ -64,9 +62,9 @@ export function ContentDetail({ content, onDelete }: ContentDetailProps) {
         )}
       </div>
 
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-2 min-w-0 flex-1">
-          <h1 className="text-xl md:text-2xl font-bold break-words">
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-1.5 min-w-0 flex-1">
+          <h1 className="text-lg md:text-xl font-bold tracking-tight break-words leading-snug">
             {decodeHtmlEntities(content.title) || getDomain(content.url)}
           </h1>
           <p className="text-sm text-muted-foreground flex items-center gap-1.5 flex-wrap">
@@ -76,19 +74,19 @@ export function ContentDetail({ content, onDelete }: ContentDetailProps) {
             {getDomain(content.url)}
           </p>
           {catMeta && (
-            <Badge variant="secondary" className={cn("text-xs px-2 py-0.5 font-medium", catMeta.bg, catMeta.color)}>
+            <span className={cn("inline-block text-[11px] font-medium px-2 py-0.5 rounded", catMeta.bg, catMeta.color)}>
               {content.category}
-            </Badge>
+            </span>
           )}
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Button variant="outline" size="icon" asChild>
-            <a href={content.url} target="_blank" rel="noopener noreferrer" title="Open original">
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Button variant="outline" size="icon" asChild className="h-8 w-8">
+            <a href={content.url} target="_blank" rel="noopener noreferrer" title="Open original" aria-label="Open original link">
               <ExternalLink className="h-4 w-4" />
             </a>
           </Button>
           {onDelete && (
-            <Button variant="destructive" size="icon" onClick={onDelete} title="Delete">
+            <Button variant="destructive" size="icon" onClick={onDelete} title="Delete" aria-label="Delete content" className="h-8 w-8">
               <Trash2 className="h-4 w-4" />
             </Button>
           )}
@@ -106,7 +104,7 @@ export function ContentDetail({ content, onDelete }: ContentDetailProps) {
       )}
 
       {content.description && (
-        <div className="rounded-xl bg-muted/30 border border-border/50 p-5">
+        <div className="rounded-lg bg-muted/30 border border-border/50 p-3.5 md:p-4">
           <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap break-words">
             {decodeHtmlEntities(content.description)}
           </p>
@@ -115,12 +113,12 @@ export function ContentDetail({ content, onDelete }: ContentDetailProps) {
 
       <Separator />
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <div className="flex items-center gap-2.5 text-sm">
           <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
           <div className="min-w-0">
             <p className="text-xs text-muted-foreground">Saved</p>
-            <p className="text-sm font-medium">{formatDate(content.createdAt)}</p>
+            <p className="text-sm font-medium">{formatDateShort(content.createdAt)}</p>
           </div>
         </div>
         <div className="flex items-center gap-2.5 text-sm">
@@ -143,13 +141,13 @@ export function ContentDetail({ content, onDelete }: ContentDetailProps) {
         )}
       </div>
 
-      <div className="flex items-center gap-2.5 p-3 rounded-xl bg-muted/30 border border-border/50">
+      <div className="flex items-center gap-2.5 p-3 rounded-lg bg-muted/30 border border-border/50 min-w-0">
         <LinkIcon className="h-4 w-4 text-muted-foreground shrink-0" />
         <a
           href={content.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-sm text-primary hover:underline truncate"
+          className="text-sm text-primary hover:underline truncate min-w-0"
         >
           {content.url}
         </a>
@@ -160,7 +158,7 @@ export function ContentDetail({ content, onDelete }: ContentDetailProps) {
           <Separator />
           <div className="space-y-1">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Your Note</p>
-            <p className="text-sm text-foreground/80 whitespace-pre-wrap break-words">{decodeHtmlEntities(content.note)}</p>
+            <p className="text-sm text-foreground/80 whitespace-pre-wrap break-words leading-relaxed">{decodeHtmlEntities(content.note)}</p>
           </div>
         </>
       )}

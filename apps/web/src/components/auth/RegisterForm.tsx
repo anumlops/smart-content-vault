@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { UserPlus, Loader2 } from "lucide-react";
+import { UserPlus, Loader2, AlertCircle } from "lucide-react";
 
 export function RegisterForm() {
   const router = useRouter();
@@ -59,45 +59,63 @@ export function RegisterForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
+      <div className="space-y-1.5">
+        <label htmlFor="register-username" className="text-sm font-medium text-foreground">
+          Username
+        </label>
         <Input
+          id="register-username"
           name="username"
           type="text"
-          placeholder="Username (min. 3 characters)"
+          placeholder="Choose a username\u2026"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           disabled={loading}
           autoComplete="username"
+          spellCheck={false}
         />
       </div>
-      <div className="space-y-2">
+      <div className="space-y-1.5">
+        <label htmlFor="register-password" className="text-sm font-medium text-foreground">
+          Password
+        </label>
         <Input
+          id="register-password"
           name="password"
           type="password"
-          placeholder="Password (min. 8 characters)"
+          placeholder="Minimum 8 characters\u2026"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           disabled={loading}
           autoComplete="new-password"
         />
       </div>
-      <div className="space-y-2">
+      <div className="space-y-1.5">
+        <label htmlFor="register-confirm" className="text-sm font-medium text-foreground">
+          Confirm password
+        </label>
         <Input
+          id="register-confirm"
           name="confirm"
           type="password"
-          placeholder="Confirm password"
+          placeholder="Confirm your password\u2026"
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
           disabled={loading}
           autoComplete="new-password"
         />
       </div>
-      {error && <p className="text-sm text-red-500 text-center">{error}</p>}
-      <Button type="submit" className="w-full gap-2" disabled={loading}>
+      {error && (
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive" role="alert" aria-live="polite">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+      <Button type="submit" className="w-full gap-2 h-10" disabled={loading}>
         {loading ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
-            Creating account...
+            Creating account\u2026
           </>
         ) : (
           <>

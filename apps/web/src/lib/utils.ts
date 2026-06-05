@@ -18,21 +18,18 @@ function toDate(date: unknown): Date | null {
 export function formatRelativeTime(date: unknown): string {
   const target = toDate(date);
   if (!target) return "Unknown date";
-
   const now = new Date();
-  const diffMs = now.getTime() - target.getTime();
-  const diffSecs = Math.floor(diffMs / 1000);
-  const diffMins = Math.floor(diffSecs / 60);
-  const diffHours = Math.floor(diffMins / 60);
-  const diffDays = Math.floor(diffHours / 24);
-  const diffWeeks = Math.floor(diffDays / 7);
-  const diffMonths = Math.floor(diffDays / 30);
-
+  const diffSecs = Math.floor((now.getTime() - target.getTime()) / 1000);
   if (diffSecs < 60) return "just now";
+  const diffMins = Math.floor(diffSecs / 60);
   if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
   if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
   if (diffDays < 7) return `${diffDays}d ago`;
+  const diffWeeks = Math.floor(diffDays / 7);
   if (diffWeeks < 4) return `${diffWeeks}w ago`;
+  const diffMonths = Math.floor(diffDays / 30);
   if (diffMonths < 12) return `${diffMonths}mo ago`;
   return target.toLocaleDateString();
 }
@@ -40,7 +37,6 @@ export function formatRelativeTime(date: unknown): string {
 export function formatDate(date: unknown): string {
   const target = toDate(date);
   if (!target) return "Unknown date";
-
   return target.toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
@@ -50,51 +46,47 @@ export function formatDate(date: unknown): string {
   });
 }
 
+export function formatDateShort(date: unknown): string {
+  const target = toDate(date);
+  if (!target) return "";
+  return target.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
 export function getContentTypeIcon(type: string): string {
   const icons: Record<string, string> = {
-    youtube: "Play",
-    instagram: "Camera",
-    twitter: "MessageCircle",
-    article: "FileText",
-    blog: "FileText",
-    website: "Globe",
+    youtube: "Play", instagram: "Camera", twitter: "MessageCircle",
+    article: "FileText", blog: "FileText", website: "Globe",
   };
   return icons[type] ?? "Link";
 }
 
 export function getContentTypeColor(type: string): string {
   const colors: Record<string, string> = {
-    youtube: "text-red-500",
-    instagram: "text-pink-500",
-    twitter: "text-blue-400",
-    article: "text-green-500",
-    blog: "text-orange-500",
-    website: "text-purple-500",
+    youtube: "text-red-500", instagram: "text-pink-500", twitter: "text-blue-400",
+    article: "text-emerald-500", blog: "text-orange-500", website: "text-violet-500",
   };
   return colors[type] ?? "text-muted-foreground";
 }
 
 export function truncate(str: string, length: number): string {
   if (str.length <= length) return str;
-  return str.slice(0, length).trimEnd() + "...";
+  return str.slice(0, length).trimEnd() + "\u2026";
 }
 
 export function decodeHtmlEntities(str: string | null | undefined): string {
   if (!str) return "";
   return str
-    .replace(/&quot;/g, '"')
-    .replace(/&#x27;/g, "'")
-    .replace(/&#39;/g, "'")
-    .replace(/&#x2019;/g, "'")
-    .replace(/&#x201C;/g, '"')
-    .replace(/&#x201D;/g, '"')
-    .replace(/&#x2013;/g, "–")
-    .replace(/&#x2014;/g, "—")
+    .replace(/&quot;/g, "\u201c")
+    .replace(/&#x27;|&#39;|&#x2019;/g, "\u2019")
+    .replace(/&#x201C;/g, "\u201c")
+    .replace(/&#x201D;/g, "\u201d")
+    .replace(/&#x2013;/g, "\u2013")
+    .replace(/&#x2014;/g, "\u2014")
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
-    .replace(/&#(\d+);/g, (_m, code) => String.fromCharCode(Number(code)))
-    .replace(/&#x([0-9a-fA-F]+);/g, (_m, code) => String.fromCharCode(parseInt(code, 16)));
+    .replace(/&#(\d+);/g, (_m: string, code: string) => String.fromCharCode(Number(code)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_m: string, code: string) => String.fromCharCode(parseInt(code, 16)));
 }
 
 export function getDomain(url: string): string {

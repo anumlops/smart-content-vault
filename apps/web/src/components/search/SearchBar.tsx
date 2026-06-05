@@ -37,14 +37,15 @@ export function SearchBar({ initialQuery = "", autoFocus = false, onSearch }: Se
   );
 
   return (
-    <form onSubmit={handleSubmit} className="relative">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+    <form onSubmit={handleSubmit} className="relative w-full">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" aria-hidden="true" />
       <Input
         ref={inputRef}
-        placeholder="Search your archive..."
+        placeholder="Search your archive\u2026"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        className="pl-9 pr-20 h-12 text-base bg-background/80 backdrop-blur-sm"
+        className="w-full pl-9 pr-20 h-11 md:h-12 text-sm bg-background/80"
+        aria-label="Search your archive"
       />
       <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
         {query && (
@@ -52,13 +53,14 @@ export function SearchBar({ initialQuery = "", autoFocus = false, onSearch }: Se
             type="button"
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-7 w-7"
             onClick={() => setQuery("")}
+            aria-label="Clear search"
           >
-            <X className="h-4 w-4" />
+            <X className="h-3.5 w-3.5" />
           </Button>
         )}
-        <Button type="submit" size="sm" className="h-8" disabled={!query.trim()}>
+        <Button type="submit" size="sm" className="h-7 text-xs px-3" disabled={!query.trim()}>
           Search
         </Button>
       </div>

@@ -24,12 +24,10 @@ function SearchContent() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 max-w-4xl mx-auto">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Search</h1>
-          <p className="text-muted-foreground">
-            Search your saved content
-          </p>
+      <div className="space-y-5 w-full">
+        <div className="page-header">
+          <h1 className="page-title">Search</h1>
+          <p className="page-subtitle">Search your saved content</p>
         </div>
 
         <SearchBar initialQuery={query} autoFocus />
@@ -41,7 +39,7 @@ function SearchContent() {
                 key={mode.key}
                 onClick={() => router.push(`/search?q=${encodeURIComponent(query)}&type=${mode.key}`)}
                 className={cn(
-                  "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
+                  "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all touch-manipulation",
                   type === mode.key
                     ? "bg-primary/10 text-primary border border-primary/20"
                     : "bg-muted/30 text-muted-foreground border border-border/50 hover:border-border hover:text-foreground"

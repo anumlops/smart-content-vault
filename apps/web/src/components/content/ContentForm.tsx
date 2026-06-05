@@ -22,7 +22,7 @@ const typeColors: Record<string, string> = {
   Instagram: "bg-pink-500/10 text-pink-500",
   "Twitter / X": "bg-blue-500/10 text-blue-400",
   Article: "bg-emerald-500/10 text-emerald-500",
-  Website: "bg-purple-500/10 text-purple-500",
+  Website: "bg-violet-500/10 text-violet-500",
 };
 
 function detectContentType(url: string): { type: string; icon: React.ReactNode } | null {
@@ -100,64 +100,68 @@ export function ContentForm() {
   }
 
   return (
-    <Card className="glass-card">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          Save New Content
-        </CardTitle>
+    <Card className="w-full">
+      <CardHeader className="pb-4">
+        <CardTitle className="flex items-center gap-2 text-base">Save New Content</CardTitle>
         <CardDescription>
-          Paste any link &mdash; YouTube, Instagram, Twitter/X, articles, or any website
+          Paste any link \u2014 YouTube, Instagram, Twitter/X, articles, or any website
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">URL</label>
+          <div className="space-y-1.5">
+            <label htmlFor="content-url" className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+              URL
+            </label>
             <div className="relative">
-              <Link className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Link className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" aria-hidden="true" />
               <Input
-                placeholder="https://youtube.com/watch?v=..."
+                id="content-url"
+                placeholder="https://youtube.com/watch?v=\u2026"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 className={cn(
-                  "pl-9 h-12 text-base pr-10",
+                  "w-full pl-9 h-11 md:h-12 text-sm pr-10",
                   isValid === true && "border-emerald-500/50 focus:border-emerald-500",
-                  isValid === false && "border-red-500/50 focus:border-red-500"
+                  isValid === false && "border-destructive/50 focus:border-destructive"
                 )}
                 disabled={loading}
+                autoComplete="off"
+                spellCheck={false}
               />
               {url && (
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  {isValid === true && <CheckCircle2 className="h-5 w-5 text-emerald-500" />}
-                  {isValid === false && <AlertCircle className="h-5 w-5 text-red-500" />}
+                  {isValid === true && <CheckCircle2 className="h-4 w-4 text-success" />}
+                  {isValid === false && <AlertCircle className="h-4 w-4 text-destructive" />}
                 </div>
               )}
             </div>
             {isValid === false && (
-              <p className="text-xs text-red-500 flex items-center gap-1">
+              <p className="text-xs text-destructive flex items-center gap-1" role="alert">
                 <AlertCircle className="h-3 w-3" />
-                Please enter a valid URL (https://...)
+                Please enter a valid URL (https://\u2026)
               </p>
             )}
           </div>
 
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Notes <span className="font-normal text-muted-foreground/60">(optional)</span>
+          <div className="space-y-1.5">
+            <label htmlFor="content-notes" className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+              Notes <span className="font-normal normal-case text-muted-foreground/60">(optional)</span>
             </label>
             <textarea
-              placeholder="Add your notes or thoughts about this content..."
+              id="content-notes"
+              placeholder="Add your notes or thoughts about this content\u2026"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              className="flex min-h-[80px] w-full rounded-xl border border-input bg-background/60 px-4 py-3 text-sm placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-primary/30 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+              className="flex min-h-[80px] w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 resize-none"
               disabled={loading}
             />
           </div>
 
           {detected && isValid && (
-            <div className="flex items-center gap-3 p-3 rounded-xl border border-border/60 bg-background/40">
+            <div className="flex items-center gap-3 p-3 rounded-lg border border-border/60 bg-muted/20">
               <div className={cn(
-                "w-9 h-9 rounded-lg flex items-center justify-center",
+                "w-8 h-8 rounded-lg flex items-center justify-center text-xs shrink-0",
                 typeColors[detected.type] ?? "bg-muted text-muted-foreground"
               )}>
                 {detected.icon}
@@ -170,11 +174,11 @@ export function ContentForm() {
           )}
 
           <div className="flex gap-3 pt-2">
-            <Button type="submit" disabled={loading || !url.trim() || !isValid} className="h-11 px-6 gap-2">
+            <Button type="submit" disabled={loading || !url.trim() || !isValid} className="h-10 px-5 gap-2">
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Saving...
+                  Saving\u2026
                 </>
               ) : (
                 "Save Content"
@@ -183,7 +187,7 @@ export function ContentForm() {
             <Button
               type="button"
               variant="outline"
-              className="h-11 px-6"
+              className="h-10 px-5"
               onClick={() => router.back()}
               disabled={loading}
             >

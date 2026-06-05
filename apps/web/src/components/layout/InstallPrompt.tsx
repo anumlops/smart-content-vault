@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { X, Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -51,17 +52,17 @@ export function InstallPrompt() {
 
   return (
     <div className="fixed bottom-20 left-4 right-4 z-50 lg:bottom-6 lg:left-auto lg:right-6 lg:w-80">
-      <div className="relative rounded-2xl bg-card border border-border/60 shadow-xl p-4 backdrop-blur-xl">
+      <div className="relative rounded-xl border border-border/60 bg-card shadow-lg p-4">
         <button
           onClick={() => setShowPrompt(false)}
-          className="absolute top-3 right-3 text-muted-foreground hover:text-foreground"
+          className="absolute top-3 right-3 text-muted-foreground hover:text-foreground transition-colors"
           aria-label="Dismiss"
         >
           <X className="h-4 w-4" />
         </button>
         <div className="flex items-start gap-3">
-          <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-            <Download className="h-5 w-5 text-primary" />
+          <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <Download className="h-4 w-4 text-primary" />
           </div>
           <div className="flex-1 min-w-0 pr-4">
             <p className="text-sm font-semibold">Install Smart Content Vault</p>
@@ -70,12 +71,9 @@ export function InstallPrompt() {
             </p>
           </div>
         </div>
-        <button
-          onClick={handleInstall}
-          className="mt-3 w-full h-10 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
-        >
+        <Button onClick={handleInstall} size="sm" className="mt-3 w-full">
           Install
-        </button>
+        </Button>
       </div>
     </div>
   );

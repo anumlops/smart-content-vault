@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Search, Clock, Tags, Plus } from "lucide-react";
+import { LayoutDashboard, Search, Clock, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -10,7 +10,14 @@ const navItems = [
   { href: "/search", label: "Search", icon: Search },
   { href: "/content/new", label: "", icon: Plus, fab: true },
   { href: "/timeline", label: "Timeline", icon: Clock },
-  { href: "/search?category=", label: "Categories", icon: Tags },
+  { href: "/search", label: "Browse", icon: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" />
+    </svg>
+  ) },
 ];
 
 export function BottomNav() {
@@ -26,17 +33,17 @@ export function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 lg:hidden">
-      <div className="flex items-center justify-around h-16 bg-background/90 backdrop-blur-xl border-t border-border px-2 pb-safe">
+      <div className="flex items-center justify-around h-14 bg-background/95 backdrop-blur-lg border-t border-border supports-[backdrop-filter]:bg-background/80 pb-safe">
         {navItems.map((item) => {
           if (item.fab) {
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className="flex items-center justify-center h-12 w-12 -mt-4 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors"
+                className="flex items-center justify-center h-11 w-11 -mt-3 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90 active:scale-95 transition-all touch-manipulation"
                 aria-label="Save Content"
               >
-                <Plus className="h-6 w-6" />
+                <Plus className="h-5 w-5" />
               </Link>
             );
           }
@@ -47,12 +54,12 @@ export function BottomNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex flex-col items-center justify-center gap-0.5 h-full px-3 min-w-[60px] transition-colors",
+                "flex flex-col items-center justify-center gap-0.5 h-full px-4 min-w-[56px] transition-colors touch-manipulation",
                 active ? "text-primary" : "text-muted-foreground hover:text-foreground"
               )}
             >
               <Icon className="h-5 w-5" />
-              <span className="text-[10px] font-medium leading-tight">{item.label}</span>
+              <span className="text-[9px] font-semibold leading-tight tracking-wide uppercase">{item.label}</span>
             </Link>
           );
         })}
